@@ -1,12 +1,10 @@
 import os
 import requests
-import json
 
 from tennis_data import get_atp_matches
 
 
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY")
-
 
 BASE_URL = "https://api.odds-api.io/v3"
 
@@ -22,6 +20,7 @@ def get_events():
         "status": "pending"
     }
 
+
     try:
 
         r = requests.get(
@@ -34,8 +33,11 @@ def get_events():
 
         data = r.json()
 
+
         if isinstance(data, list):
+
             return data
+
 
         return []
 
@@ -53,99 +55,7 @@ def get_events():
 
 
 
-def get_event_odds(event_id):
-
-
-    url = f"{BASE_URL}/odds"
-
-
-    params = {
-
-        "apiKey": ODDS_API_KEY,
-
-        "eventId": event_id
-
-    }
-
-
-    try:
-
-
-        r = requests.get(
-
-            url,
-
-            params=params,
-
-            timeout=20
-
-        )
-
-
-        if r.status_code != 200:
-
-            return {}
-
-
-        data = r.json()
-
-
-
-        odds = {}
-
-
-
-        if isinstance(data, dict):
-
-
-            markets = data.get(
-                "markets",
-                []
-            )
-
-
-            for market in markets:
-
-
-                for outcome in market.get(
-                    "outcomes",
-                    []
-                ):
-
-
-                    name = outcome.get(
-                        "name"
-                    )
-
-
-                    price = outcome.get(
-                        "price"
-                    )
-
-
-                    if name and price:
-
-
-                        odds[name] = price
-
-
-
-        return odds
-
-
-
-    except Exception as e:
-
-
-        return {}
-
-
-
-
-
-
 def normalize(name):
-
 
     if not name:
 
@@ -155,20 +65,76 @@ def normalize(name):
     return (
 
         str(name)
-
         .lower()
-
-        .replace(" ","")
-
-        .replace(".","")
-
-        .replace("-","")
-
-        .replace(",","")
-
-        .replace("'","")
+        .replace(" ", "")
+        .replace(".", "")
+        .replace("-", "")
+        .replace(",", "")
+        .replace("'", "")
 
     )
+
+
+
+
+
+
+
+def extract_odds(event):
+
+
+    odds = {}
+
+
+
+    # jeigu odds yra tiesiai event viduje
+
+    if isinstance(event.get("odds"), dict):
+
+        return event["odds"]
+
+
+
+    # jeigu markets egzistuoja
+
+    markets = event.get(
+        "markets",
+        []
+    )
+
+
+    if isinstance(markets, list):
+
+
+        for market in markets:
+
+
+            outcomes = market.get(
+                "outcomes",
+                []
+            )
+
+
+            for outcome in outcomes:
+
+
+                name = outcome.get(
+                    "name"
+                )
+
+
+                price = outcome.get(
+                    "price"
+                )
+
+
+                if name and price:
+
+                    odds[name] = price
+
+
+
+    return odds
 
 
 
@@ -241,6 +207,7 @@ def generate_report(matches):
     )
 
 
+
     total = 0
 
 
@@ -270,13 +237,9 @@ def generate_report(matches):
 
 
         print(
-
             match["player1"]["name"],
-
             "vs",
-
             match["player2"]["name"]
-
         )
 
 
@@ -310,7 +273,6 @@ def generate_report(matches):
 
 
 
-
 def main():
 
 
@@ -328,6 +290,17 @@ def main():
         "Gauta įvykių:",
         len(events)
     )
+
+
+
+    if not events:
+
+        print(
+            "Nėra įvykių"
+        )
+
+        return
+
 
 
 
@@ -358,11 +331,8 @@ def main():
 
 
         event = find_event(
-
             match,
-
             events
-
         )
 
 
@@ -370,13 +340,8 @@ def main():
         if event:
 
 
-            event_id = event.get(
-                "id"
-            )
-
-
-            odds = get_event_odds(
-                event_id
+            odds = extract_odds(
+                event
             )
 
 
@@ -392,6 +357,7 @@ def main():
 
         else:
 
+
             match["odds"] = {}
 
 
@@ -401,11 +367,8 @@ def main():
 
 
     print(
-
         "Rasta koeficientų:",
-
         found
-
     )
 
 
