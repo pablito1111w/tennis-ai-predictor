@@ -9,7 +9,56 @@ ODDS_API_KEY = os.environ.get("ODDS_API_KEY")
 
 BASE_URL = "https://api.odds-api.io/v3"
 
-ODDS_CACHE = {}
+
+HEADERS = {
+    "User-Agent": "tennis-value-bot"
+}
+
+
+
+def api_get(url, params):
+
+    for attempt in range(3):
+
+        try:
+
+            r = requests.get(
+                url,
+                params=params,
+                headers=HEADERS,
+                timeout=20
+            )
+
+
+            if r.status_code == 429:
+
+                print("API LIMIT - waiting...")
+
+                time.sleep(10)
+
+                continue
+
+
+
+            r.raise_for_status()
+
+            return r.json()
+
+
+
+        except Exception as e:
+
+            print(
+                "API ERROR:",
+                e
+            )
+
+            time.sleep(5)
+
+
+
+    return None
+
 
 
 
@@ -17,222 +66,63 @@ ODDS_CACHE = {}
 
 def get_events():
 
-    url = f"{BASE_URL}/events"
 
-    params = {
-        "apiKey": ODDS_API_KEY,
-        "sport": "tennis",
-        "status": "pending"
-    }
+    data = api_get(
+
+        f"{BASE_URL}/events",
+
+        {
+            "apiKey": ODDS_API_KEY,
+            "sport": "tennis",
+            "status": "pending"
+        }
+
+    )
 
 
-    try:
+    if isinstance(data,list):
 
-        r = requests.get(
-            url,
-            params=params,
-            timeout=20
+        return data
+
+
+    return []
+
+
+
+
+
+
+
+
+def get_all_odds():
+
+
+    data = api_get(
+
+        f"{BASE_URL}/odds",
+
+        {
+            "apiKey": ODDS_API_KEY
+        }
+
+    )
+
+
+    if isinstance(data,list):
+
+        return data
+
+
+
+    if isinstance(data,dict):
+
+        return data.get(
+            "events",
+            []
         )
 
 
-        r.raise_for_status()
-
-
-        data = r.json()
-
-
-        return data if isinstance(data,list) else []
-
-
-
-    except Exception as e:
-
-        print(
-            "EVENT ERROR:",
-            e
-        )
-
-        return []
-
-
-
-
-
-
-
-def get_event_odds(event_id):
-
-
-    if event_id in ODDS_CACHE:
-
-        return ODDS_CACHE[event_id]
-
-
-
-    url = f"{BASE_URL}/odds"
-
-
-    params = {
-
-        "apiKey": ODDS_API_KEY,
-
-        "eventId": event_id
-
-    }
-
-
-
-    for attempt in range(3):
-
-
-        try:
-
-
-            # apsauga nuo rate limit
-
-            time.sleep(2)
-
-
-
-            r = requests.get(
-
-                url,
-
-                params=params,
-
-                timeout=20
-
-            )
-
-
-
-            if r.status_code == 429:
-
-
-                print(
-                    "API LIMIT - laukiu..."
-                )
-
-
-                time.sleep(15)
-
-                continue
-
-
-
-            if r.status_code != 200:
-
-
-                return {}
-
-
-
-            data = r.json()
-
-
-            odds = {}
-
-
-
-            if isinstance(data,dict):
-
-
-                markets=data.get(
-                    "markets",
-                    []
-                )
-
-
-
-                for market in markets:
-
-
-                    for outcome in market.get(
-                        "outcomes",
-                        []
-                    ):
-
-
-                        name=outcome.get(
-                            "name"
-                        )
-
-
-                        price=outcome.get(
-                            "price"
-                        )
-
-
-                        if name and price:
-
-                            odds[name]=price
-
-
-
-            elif isinstance(data,list):
-
-
-                for item in data:
-
-
-                    if not isinstance(item,dict):
-
-                        continue
-
-
-
-                    for market in item.get(
-                        "markets",
-                        []
-                    ):
-
-
-                        for outcome in market.get(
-                            "outcomes",
-                            []
-                        ):
-
-
-                            name=outcome.get(
-                                "name"
-                            )
-
-
-                            price=outcome.get(
-                                "price"
-                            )
-
-
-                            if name and price:
-
-                                odds[name]=price
-
-
-
-
-            ODDS_CACHE[event_id]=odds
-
-
-            return odds
-
-
-
-
-        except Exception as e:
-
-
-            print(
-                "ODDS ERROR:",
-                e
-            )
-
-
-            time.sleep(5)
-
-
-
-    return {}
-
+    return []
 
 
 
@@ -267,51 +157,91 @@ def normalize(x):
 
 
 
+def extract_odds(item):
 
-def find_event(match,events):
+
+    result = {}
 
 
-    p1=normalize(
+
+    if not isinstance(item,dict):
+
+        return result
+
+
+
+    markets = item.get(
+        "markets",
+        []
+    )
+
+
+
+    for market in markets:
+
+
+        for outcome in market.get(
+            "outcomes",
+            []
+        ):
+
+
+            name = outcome.get(
+                "name"
+            )
+
+
+            price = outcome.get(
+                "price"
+            )
+
+
+            if name and price:
+
+                result[name]=price
+
+
+
+    return result
+
+
+
+
+
+
+
+def match_odds(match, odds):
+
+
+    p1 = normalize(
         match["player1"]["name"]
     )
 
 
-    p2=normalize(
+    p2 = normalize(
         match["player2"]["name"]
     )
 
 
 
-    for event in events:
+    for item in odds:
 
 
-        home=normalize(
-            event.get("home")
-        )
-
-
-        away=normalize(
-            event.get("away")
+        text = normalize(
+            str(item)
         )
 
 
 
-        if (
-
-            p1 in home and p2 in away
-
-        ) or (
-
-            p2 in home and p1 in away
-
-        ):
+        if p1 in text and p2 in text:
 
 
-            return event
+            return extract_odds(
+                item
+            )
 
 
-
-    return None
+    return {}
 
 
 
@@ -335,6 +265,7 @@ def report(matches):
     )
 
 
+
     total=0
 
 
@@ -355,7 +286,6 @@ def report(matches):
 
 
         print()
-
 
         print(
             "TOURNAMENT:",
@@ -421,8 +351,31 @@ def main():
 
 
 
+    if not events:
+
+        print(
+            "API neduoda events"
+        )
+
+        return
+
+
+
+
+
     matches=get_atp_matches(
         events
+    )
+
+
+
+    odds=get_all_odds()
+
+
+
+    print(
+        "Gauta odds:",
+        len(odds)
     )
 
 
@@ -431,41 +384,22 @@ def main():
 
 
 
-    # tik realūs ATP/challenger mačai
-
     for match in matches["matches"]:
 
 
-        event=find_event(
+        value=match_odds(
             match,
-            events
+            odds
         )
 
 
-
-        if not event:
-
-
-            match["odds"]={}
-
-            continue
+        match["odds"]=value
 
 
 
-        odds=get_event_odds(
-            event.get("id")
-        )
-
-
-
-        match["odds"]=odds
-
-
-
-        if odds:
+        if value:
 
             found+=1
-
 
 
 
