@@ -1,1 +1,43 @@
 name: Daily Tennis Bot
+name: Daily Tennis AI Prediction
+
+on:
+  schedule:
+    # Paleidžia kiekvieną dieną 08:00 UTC
+    # (Lietuvos laiku bus 10:00 žiemą / 11:00 vasarą)
+    - cron: "0 8 * * *"
+
+  workflow_dispatch:
+
+
+jobs:
+
+  tennis-analysis:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Atsisiųsti kodą
+        uses: actions/checkout@v4
+
+
+      - name: Paleisti Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+
+      - name: Įdiegti bibliotekas
+        run: |
+          pip install -r requirements.txt
+
+
+      - name: Paleisti teniso botą
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+
+        run: |
+          python tennis_bot.py
