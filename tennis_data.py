@@ -1,48 +1,68 @@
-import requests
 from datetime import datetime
+
+
+ALLOWED_TOURNAMENTS = [
+    "ATP 500",
+    "ATP Masters 1000",
+    "Grand Slam"
+]
 
 
 def get_atp_matches():
 
-    """
-    Kol kas duomenų sluoksnio testas.
-    Čia vėliau jungsime realius ATP 500/1000/Grand Slam mačus.
-    """
-
     today = datetime.now().strftime("%Y-%m-%d")
 
-    matches = [
+
+    # ČIA VĖLIAU BUS REALUS API
+    # Dabar testuojame filtravimo logiką
+
+    all_matches = [
 
         {
             "date": today,
             "tournament": "ATP Masters 1000",
             "surface": "Hard",
-            "player1": "Jannik Sinner",
-            "player2": "Daniil Medvedev",
-            "ranking1": 1,
-            "ranking2": 5,
-            "form1": "8/10",
-            "form2": "6/10",
-            "h2h": "Sinner leads 6-5",
-            "odds1": 1.55,
-            "odds2": 2.60
+            "player1": "Player A",
+            "player2": "Player B",
+            "ranking1": 3,
+            "ranking2": 8
         },
+
 
         {
             "date": today,
-            "tournament": "ATP 500",
+            "tournament": "ATP 250",
             "surface": "Clay",
-            "player1": "Carlos Alcaraz",
-            "player2": "Casper Ruud",
-            "ranking1": 2,
-            "ranking2": 8,
-            "form1": "9/10",
-            "form2": "7/10",
-            "h2h": "Alcaraz leads 4-1",
-            "odds1": 1.40,
-            "odds2": 3.00
+            "player1": "Player C",
+            "player2": "Player D",
+            "ranking1": 40,
+            "ranking2": 55
         }
 
     ]
 
-    return matches
+
+    filtered = []
+
+
+    for match in all_matches:
+
+        if match["tournament"] in ALLOWED_TOURNAMENTS:
+            filtered.append(match)
+
+
+
+    if len(filtered) == 0:
+
+        return {
+            "status": "empty",
+            "message":
+            "🎾 Šiandien nėra tinkamų ATP TOP lygio mačų"
+        }
+
+
+
+    return {
+        "status": "ok",
+        "matches": filtered
+    }
