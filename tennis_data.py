@@ -1,4 +1,9 @@
+import os
+import requests
 from datetime import datetime
+
+
+ODDS_API_KEY = os.environ["ODDS_API_KEY"]
 
 
 ALLOWED_TOURNAMENTS = [
@@ -9,130 +14,137 @@ ALLOWED_TOURNAMENTS = [
 
 
 
+def get_odds_matches():
+
+    url = "https://api.odds-api.io/v3/odds"
+
+    params = {
+        "apiKey": ODDS_API_KEY,
+        "sport": "tennis",
+        "region": "eu"
+    }
+
+
+    response = requests.get(
+        url,
+        params=params,
+        timeout=20
+    )
+
+
+    if response.status_code != 200:
+
+        print(
+            "Odds API klaida:",
+            response.text
+        )
+
+        return []
+
+
+
+    return response.json()
+
+
+
+
 def get_atp_matches():
 
     today = datetime.now().strftime("%Y-%m-%d")
 
 
-    # TESTINIAI DUOMENYS
-    # Vėliau čia jungsim realų šaltinį
-
-    all_matches = [
-
-        {
-            "date": today,
-
-            "tournament": "ATP Masters 1000",
-
-            "surface": "Hard",
+    odds_data = get_odds_matches()
 
 
-            "player1": {
-
-                "name": "Jannik Sinner",
-
-                "ranking": 1,
-
-                "form": "8/10",
-
-                "serve_rating": 9,
-
-                "return_rating": 9
-            },
+    matches = []
 
 
-            "player2": {
-
-                "name": "Daniil Medvedev",
-
-                "ranking": 6,
-
-                "form": "6/10",
-
-                "serve_rating": 8,
-
-                "return_rating": 8
-            },
+    for game in odds_data:
 
 
-            "h2h": "Sinner leads 6-5",
+        tournament = game.get(
+            "league",
+            ""
+        )
 
 
-            "odds": {
+        if not any(
+            x in tournament
+            for x in ALLOWED_TOURNAMENTS
+        ):
+            continue
 
-                "player1": 1.55,
 
-                "player2": 2.60
+
+        matches.append(
+
+            {
+                "date": today,
+
+                "tournament": tournament,
+
+
+                "player1": {
+                    "name":
+                    game["home_team"],
+
+                    "ranking":
+                    "unknown",
+
+                    "form":
+                    "unknown",
+
+                    "serve_rating":
+                    "unknown",
+
+                    "return_rating":
+                    "unknown"
+                },
+
+
+                "player2": {
+                    "name":
+                    game["away_team"],
+
+                    "ranking":
+                    "unknown",
+
+                    "form":
+                    "unknown",
+
+                    "serve_rating":
+                    "unknown",
+
+                    "return_rating":
+                    "unknown"
+                },
+
+
+                "h2h":
+                "reikia papildyti",
+
+
+                "odds": {
+
+                    "player1":
+                    game.get(
+                        "home_odds",
+                        None
+                    ),
+
+                    "player2":
+                    game.get(
+                        "away_odds",
+                        None
+                    )
+                }
             }
 
-        },
-
-
-        {
-
-            "date": today,
-
-            "tournament": "ATP 500",
-
-            "surface": "Clay",
-
-
-            "player1": {
-
-                "name": "Carlos Alcaraz",
-
-                "ranking": 2,
-
-                "form": "9/10",
-
-                "serve_rating": 9,
-
-                "return_rating": 9
-            },
-
-
-            "player2": {
-
-                "name": "Casper Ruud",
-
-                "ranking": 8,
-
-                "form": "7/10",
-
-                "serve_rating": 8,
-
-                "return_rating": 8
-            },
-
-
-            "h2h": "Alcaraz leads 4-1",
-
-
-            "odds": {
-
-                "player1": 1.40,
-
-                "player2": 3.00
-            }
-
-        }
-
-    ]
+        )
 
 
 
-    filtered = []
-
-
-    for match in all_matches:
-
-        if match["tournament"] in ALLOWED_TOURNAMENTS:
-
-            filtered.append(match)
-
-
-
-    if len(filtered) == 0:
+    if len(matches) == 0:
 
         return {
 
@@ -149,6 +161,6 @@ def get_atp_matches():
 
         "status": "ok",
 
-        "matches": filtered
+        "matches": matches
 
     }
