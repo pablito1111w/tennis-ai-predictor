@@ -14,13 +14,9 @@ def get_events():
 
 
     params = {
-
         "apiKey": ODDS_API_KEY,
-
         "sport": "tennis",
-
         "status": "pending"
-
     }
 
 
@@ -32,9 +28,7 @@ def get_events():
             timeout=20
         )
 
-
         r.raise_for_status()
-
 
         data = r.json()
 
@@ -45,7 +39,6 @@ def get_events():
 
 
         return []
-
 
 
     except Exception as e:
@@ -62,141 +55,105 @@ def get_events():
 
 
 
-def normalize_name(name):
 
-    if not name:
-
-        return ""
+def get_odds(event_id):
 
 
-    return (
+    if not event_id:
 
-        str(name)
-        .lower()
-        .replace(".", "")
-        .replace("-", "")
-        .replace(" ", "")
-        .replace(",", "")
-
-    )
+        return {}
 
 
 
+    url = "https://api.odds-api.io/v3/odds"
 
 
 
+    params = {
 
-def extract_odds(event):
+        "apiKey": ODDS_API_KEY,
 
+        "eventId": event_id
 
-    odds = {}
-
-
-
-    # jeigu API duoda tiesiai odds
-
-    if isinstance(event.get("odds"), dict):
-
-        return event["odds"]
+    }
 
 
 
-
-    # standartinis markets formatas
-
-    markets = event.get(
-        "markets",
-        []
-    )
+    try:
 
 
+        r = requests.get(
 
-    for market in markets:
+            url,
 
+            params=params,
 
-        outcomes = market.get(
-            "outcomes",
-            []
+            timeout=20
+
         )
 
 
-        for outcome in outcomes:
+        r.raise_for_status()
 
 
-            name = outcome.get(
-                "name"
+        data = r.json()
+
+
+
+        odds = {}
+
+
+
+        if isinstance(data, dict):
+
+
+            markets = data.get(
+                "markets",
+                []
             )
 
 
-            price = outcome.get(
-                "price"
-            )
+            for market in markets:
 
 
-            if name and price:
+                for outcome in market.get(
+                    "outcomes",
+                    []
+                ):
 
 
-                odds[name] = price
+                    name = outcome.get(
+                        "name"
+                    )
 
 
+                    price = outcome.get(
+                        "price"
+                    )
 
 
-    return odds
+                    if name and price:
 
 
-
-
-
-
-
-def find_event_odds(match, events):
-
-
-    p1 = normalize_name(
-        match["player1"]["name"]
-    )
-
-
-    p2 = normalize_name(
-        match["player2"]["name"]
-    )
+                        odds[name] = price
 
 
 
-    for event in events:
+        return odds
 
 
-        home = normalize_name(
-            event.get("home")
+
+
+    except Exception as e:
+
+
+        print(
+            "ODDS ERROR:",
+            e
         )
 
 
-        away = normalize_name(
-            event.get("away")
-        )
-
-
-
-        # tikslus poros tikrinimas
-
-        if (
-
-            (p1 in home and p2 in away)
-
-            or
-
-            (p2 in home and p1 in away)
-
-        ):
-
-
-            return extract_odds(
-                event
-            )
-
-
-
-    return {}
+        return {}
 
 
 
@@ -229,6 +186,7 @@ def generate_report(matches):
 
 
         print()
+
 
         print(
             "TOURNAMENT:",
@@ -278,8 +236,8 @@ def generate_report(matches):
         )
 
 
-        total += 1
 
+        total += 1
 
 
 
@@ -290,6 +248,7 @@ def generate_report(matches):
         "TOTAL MATCHES:",
         total
     )
+
 
 
 
@@ -313,24 +272,9 @@ def main():
 
 
     print(
-
         "Gauta įvykių:",
-
         len(events)
-
     )
-
-
-
-    if not events:
-
-
-        print(
-            "Nėra įvykių"
-        )
-
-        return
-
 
 
 
@@ -347,8 +291,8 @@ def main():
             "Nėra ATP mačų"
         )
 
-        return
 
+        return
 
 
 
@@ -357,14 +301,11 @@ def main():
     for match in matches["matches"]:
 
 
-        match["odds"] = find_event_odds(
+        match["odds"] = get_odds(
 
-            match,
-
-            events
+            match["event_id"]
 
         )
-
 
 
 
@@ -373,7 +314,6 @@ def main():
     generate_report(
         matches
     )
-
 
 
 
