@@ -40,3 +40,12 @@ jobs:
 
         run: |
           python tennis_bot.py
+
+
+      - name: Išsaugoti istoriją GitHub
+        run: |
+          git config --global user.name "tennis-bot"
+          git config --global user.email "bot@github.com"
+          git add history.csv
+          git commit -m "Update tennis history" || echo "No changes"
+          git push
