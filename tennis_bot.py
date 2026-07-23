@@ -1,3 +1,4 @@
+from tennis_data import get_atp_matches
 import os
 import csv
 from datetime import datetime
@@ -38,7 +39,7 @@ Danga: Clay
 # AI ANALIZĖ
 # --------------------------------------------------
 
-def analyze(matches):
+def analyze():
 
     prompt = f"""
 
@@ -46,7 +47,7 @@ Tu esi profesionalus ATP teniso analitikas.
 
 Analizuok tik ATP mačus:
 
-{matches}
+{}
 
 
 Atrink TIK geriausius 5 pasirinkimus.
@@ -156,7 +157,7 @@ def send_telegram(message):
 # START
 # --------------------------------------------------
 
-matches = get_matches()
+matches = get_atp_matches()
 
 prediction = analyze(matches)
 
