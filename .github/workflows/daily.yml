@@ -14,10 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
 
+    permissions:
+      contents: write
+
+
     steps:
+
 
       - name: Atsisiųsti kodą
         uses: actions/checkout@v4
+
 
 
       - name: Nustatyti Python
@@ -26,26 +32,54 @@ jobs:
           python-version: "3.11"
 
 
+
       - name: Įdiegti bibliotekas
         run: |
           pip install -r requirements.txt
 
 
+
       - name: Paleisti analizę
         env:
+
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+
           CHAT_ID: ${{ secrets.CHAT_ID }}
+
           OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
         run: |
+
           python tennis_bot.py
+
+
+
+      - name: Patikrinti istoriją
+        run: |
+
+          ls -la
+
 
 
       - name: Išsaugoti istoriją GitHub
         run: |
-          git config --global user.name "tennis-bot"
-          git config --global user.email "bot@github.com"
-          git add history.csv
-          git commit -m "Update tennis history" || echo "No changes"
-          git push
+
+          if [ -f history.csv ]; then
+
+            git config --global user.name "tennis-bot"
+
+            git config --global user.email "bot@github.com"
+
+            git add history.csv
+
+            git commit -m "Update tennis history" || echo "No changes"
+
+            git push
+
+          else
+
+            echo "history.csv nerastas"
+
+          fi
