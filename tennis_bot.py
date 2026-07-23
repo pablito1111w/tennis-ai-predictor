@@ -1,9 +1,11 @@
 import os
+import csv
+from datetime import datetime
+
 import requests
 from openai import OpenAI
 
 
-# Gauname slaptažodžius iš GitHub Secrets
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 OPENAI_KEY = os.environ["OPENAI_KEY"]
@@ -12,49 +14,73 @@ OPENAI_KEY = os.environ["OPENAI_KEY"]
 client = OpenAI(api_key=OPENAI_KEY)
 
 
-# Kol kas testiniai mačai.
-# Vėliau čia prijungsime realius ATP/WTA mačus.
+# --------------------------------------------------
+# ATP MAČAI
+# (vėliau prijungsime realų nemokamą API)
+# --------------------------------------------------
+
 def get_matches():
 
     return """
-    Šiandienos teniso mačai:
+Šiandienos ATP mačai:
 
-    ATP:
-    Jannik Sinner - Daniil Medvedev
-    Carlos Alcaraz - Casper Ruud
+1. Jannik Sinner vs Daniil Medvedev
+Turnyras: ATP
+Danga: Hard
 
-    WTA:
-    Iga Swiatek - Coco Gauff
-    """
+2. Carlos Alcaraz vs Casper Ruud
+Turnyras: ATP
+Danga: Clay
+
+3. Alexander Zverev vs Alex de Minaur
+Turnyras: ATP
+Danga: Hard
+"""
 
 
+# --------------------------------------------------
+# AI ANALIZĖ
+# --------------------------------------------------
 
 def analyze(matches):
 
     prompt = f"""
-Tu esi profesionalus teniso analitikas.
 
-Išanalizuok šiuos mačus:
+Tu esi profesionalus ATP teniso analitikas.
+
+Analizuok tik ATP mačus:
 
 {matches}
 
-Analizei naudok:
-- dabartinę žaidėjų formą
-- paskutinių mačų rezultatus
-- žaidimo stilių
-- dangos tinkamumą
-- tarpusavio istoriją (H2H)
 
-Pateik:
+Atrink TIK geriausius 5 pasirinkimus.
 
-1. Tikėtiną nugalėtoją
-2. Galimą setų rezultatą
-3. Galimą over/under pasirinkimą
-4. Pasitikėjimą procentais
-5. Trumpą argumentaciją
+Kiekvienam pateik:
 
-Rinkis tik stipriausias prognozes.
-Nerašyk bereikalingų pasirinkimų.
+🎾 Mačas:
+🏆 Prognozė:
+📊 Confidence procentas:
+💰 Value pick:
+📈 Tikėtinas rezultatas:
+📝 Argumentai:
+
+
+Vertink:
+- dabartinę formą
+- paskutinius 10 mačų
+- dangą
+- H2H
+- servą
+- return žaidimą
+- fizinę būklę
+
+
+Jeigu nėra aiškaus pranašumo:
+nerašyk pasirinkimo.
+
+
+Formatas:
+TOP ATP PICKS OF THE DAY
 """
 
 
@@ -68,12 +94,49 @@ Nerašyk bereikalingų pasirinkimų.
                 "content": prompt
             }
         ]
+
     )
 
 
     return response.choices[0].message.content
 
 
+
+# --------------------------------------------------
+# ISTORIJOS KAUPIMAS
+# --------------------------------------------------
+
+def save_history(prediction):
+
+    file = "history.csv"
+
+    exists = os.path.isfile(file)
+
+    with open(
+        file,
+        "a",
+        newline="",
+        encoding="utf-8"
+    ) as f:
+
+        writer = csv.writer(f)
+
+        if not exists:
+            writer.writerow([
+                "date",
+                "prediction"
+            ])
+
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d"),
+            prediction.replace("\n", " ")
+        ])
+
+
+
+# --------------------------------------------------
+# TELEGRAM
+# --------------------------------------------------
 
 def send_telegram(message):
 
@@ -83,28 +146,30 @@ def send_telegram(message):
     )
 
 
-    data = {
-        "chat_id": CHAT_ID,
-        "text": message
-    }
-
-
     requests.post(
         url,
-        json=data
+        json={
+            "chat_id": CHAT_ID,
+            "text": message
+        }
     )
 
 
 
-# Paleidimas
+# --------------------------------------------------
+# START
+# --------------------------------------------------
 
 matches = get_matches()
 
 prediction = analyze(matches)
 
 
+save_history(prediction)
+
+
 telegram_message = (
-    "🎾 DIENOS TENISO ANALIZĖ\n\n"
+    "🎾 ATP DAILY PICKS\n\n"
     + prediction
 )
 
@@ -112,4 +177,4 @@ telegram_message = (
 send_telegram(telegram_message)
 
 
-print("Prognozė išsiųsta į Telegram")
+print("ATP prognozė išsiųsta")
