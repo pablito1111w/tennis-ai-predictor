@@ -1,352 +1,252 @@
 import os
-import csv
+import json
 from datetime import datetime
-
-import requests
-from openai import OpenAI
 
 from tennis_data import get_atp_matches
 
 
-
-TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
-CHAT_ID = os.environ["CHAT_ID"]
-OPENAI_KEY = os.environ["OPENAI_KEY"]
-
-
-
-client = OpenAI(
-    api_key=OPENAI_KEY
+ODDS_API_KEY = os.environ.get(
+    "ODDS_API_KEY"
 )
 
 
 
-# --------------------------------------------------
-# AI ANALIZĖ
-# --------------------------------------------------
+def get_events():
 
-def analyze(matches):
+    import requests
 
 
-    matches_text = str(matches)
+    url = "https://api.odds-api.io/v3/events"
 
 
+    params = {
 
-    prompt = f"""
+        "apiKey":
+        ODDS_API_KEY,
 
-Tu esi profesionalus ATP teniso analitikas ir value betting specialistas.
+        "sport":
+        "tennis",
 
+        "status":
+        "pending"
+    }
 
-Analizuok tik:
 
-- ATP 500
-- ATP Masters 1000
-- Grand Slam
+    try:
 
+        response = requests.get(
 
-Duomenys:
+            url,
 
-{matches_text}
+            params=params,
 
-
-
-Atrink tik geriausius ATP pasirinkimus.
-
-
-Maksimaliai:
-5 pick'ai per dieną.
-
-
-
-Kiekvienam pateik:
-
-
-🎾 Mačas:
-
-🏆 Turnyras:
-
-✅ Prognozė:
-
-📊 Tikimybė procentais:
-
-💰 Koeficientas:
-
-📈 Value procentas:
-
-🎯 Statusas:
-
-VALUE PICK arba SKIP
-
-
-
-Vertink:
-
-
-- ATP reitingą
-- paskutinių 10 mačų formą
-- dangą
-- H2H
-- servą
-- return žaidimą
-- fizinę būklę
-- koeficiento vertę
-
-
-
-TAISYKLĖ:
-
-
-Jeigu nėra aiškaus pranašumo:
-
-NERODYK pasirinkimo.
-
-
-
-Jeigu nėra koeficientų:
-
-rašyk:
-
-NO ODDS DATA
-
-
-
-Jeigu value mažiau nei 5%:
-
-SKIP.
-
-
-
-Formatas:
-
-
-🎾 TOP ATP VALUE PICKS OF THE DAY
-
-"""
-
-
-
-    response = client.chat.completions.create(
-
-
-        model="gpt-4.1-mini",
-
-
-        messages=[
-
-            {
-
-                "role":
-                "user",
-
-                "content":
-                prompt
-
-            }
-
-        ]
-
-    )
-
-
-    return response.choices[0].message.content
-
-
-
-
-
-# --------------------------------------------------
-# ISTORIJA
-# --------------------------------------------------
-
-def save_history(prediction):
-
-
-    file = "history.csv"
-
-
-    exists = os.path.isfile(
-        file
-    )
-
-
-
-    with open(
-
-        file,
-
-        "a",
-
-        newline="",
-
-        encoding="utf-8"
-
-    ) as f:
-
-
-
-        writer = csv.writer(
-            f
+            timeout=20
         )
 
 
-
-        if not exists:
-
-            writer.writerow(
-
-                [
-
-                    "date",
-
-                    "prediction",
-
-                    "result",
-
-                    "profit"
-
-                ]
-
-            )
+        response.raise_for_status()
 
 
+        data = response.json()
 
-        writer.writerow(
 
-            [
+        if isinstance(data, list):
 
-                datetime.now().strftime(
-                    "%Y-%m-%d"
-                ),
+            return data
 
-                prediction.replace(
-                    "\n",
-                    " "
-                ),
 
-                "PENDING",
+        return []
 
-                ""
 
-            ]
+    except Exception as e:
 
+
+        print(
+            "Odds API klaida:",
+            e
         )
 
 
-
-
-
-# --------------------------------------------------
-# TELEGRAM
-# --------------------------------------------------
-
-def send_telegram(message):
-
-
-    url = (
-
-        "https://api.telegram.org/"
-
-        f"bot{TELEGRAM_TOKEN}/sendMessage"
-
-    )
-
-
-
-    requests.post(
-
-        url,
-
-        json={
-
-            "chat_id":
-            CHAT_ID,
-
-            "text":
-            message
-
-        }
-
-    )
+        return []
 
 
 
 
 
-# --------------------------------------------------
-# START
-# --------------------------------------------------
-
-matches = get_atp_matches()
-
-
-
-if matches["status"] == "empty":
-
-
-    send_telegram(
-
-        matches["message"]
-
-    )
+def print_events(events):
 
 
     print(
-
-        "Nėra ATP TOP lygio mačų"
-
+        "===== TENNIS EVENTS ====="
     )
 
 
-    exit()
+    for event in events:
+
+
+        league = event.get(
+            "league",
+            {}
+        )
+
+
+        name = league.get(
+            "name",
+            "Unknown"
+        )
+
+
+        print(
+            "TOURNAMENT:",
+            name
+        )
+
+
+
+    print(
+        "===== END EVENTS ====="
+    )
 
 
 
 
 
-prediction = analyze(
 
-    matches["matches"]
-
-)
+def generate_value_report(matches):
 
 
+    today = datetime.now().strftime(
+        "%Y-%m-%d"
+    )
+
+
+    print()
+
+    print(
+        "🎾 ATP DAILY VALUE PICKS"
+    )
+
+    print()
+
+    print(
+        "🎾 TOP ATP VALUE PICKS OF THE DAY"
+    )
+
+    print()
+
+
+    if matches.get("status") == "empty":
+
+
+        print(
+            f"Šiandien ({today}) nėra ATP mačų su pakankamais duomenimis VALUE analizei."
+        )
+
+        print()
+
+        print(
+            "STATUS: NO ODDS DATA"
+        )
+
+        print()
+
+        print(
+            "================="
+        )
+
+        return
 
 
 
-save_history(
-
-    prediction
-
-)
+    for match in matches["matches"]:
 
 
+        print(
+            "TOURNAMENT:",
+            match["tournament"]
+        )
+
+
+        print(
+            match["player1"]["name"],
+            "vs",
+            match["player2"]["name"]
+        )
+
+
+        print(
+            "ODDS:",
+            match["odds"]
+        )
+
+
+        print(
+            "STATUS: NEED ANALYSIS"
+        )
+
+
+        print(
+            "---------------------"
+        )
 
 
 
-telegram_message = (
-
-    "🎾 ATP DAILY VALUE PICKS\n\n"
-
-    + prediction
-
-)
 
 
 
 
-
-send_telegram(
-
-    telegram_message
-
-)
+def main():
 
 
+    print(
+        "Paleidžiama ATP analizė..."
+    )
+
+
+    events = get_events()
 
 
 
-print(
+    if not events:
 
-    "ATP value prognozė išsiųsta"
 
-)
+        print(
+            "Nerasta įvykių"
+        )
+
+        return
+
+
+
+
+    # parodyti visus API turnyrus loge
+
+    print_events(
+        events
+    )
+
+
+
+    # SVARBUS PAKEITIMAS
+    # perduodam events į get_atp_matches()
+
+    matches = get_atp_matches(
+        events
+    )
+
+
+
+    generate_value_report(
+        matches
+    )
+
+
+
+
+
+
+
+if __name__ == "__main__":
+
+
+    main()
