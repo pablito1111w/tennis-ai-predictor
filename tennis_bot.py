@@ -8,49 +8,34 @@ from openai import OpenAI
 from tennis_data import get_atp_matches
 
 
+
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 OPENAI_KEY = os.environ["OPENAI_KEY"]
 
 
-client = OpenAI(api_key=OPENAI_KEY)
+
+client = OpenAI(
+    api_key=OPENAI_KEY
+)
 
 
 
-# ---------------------------------------------
-# VALUE SKAIČIAVIMAS
-# ---------------------------------------------
-
-def calculate_value(probability, odds):
-
-    probability = probability / 100
-
-    fair_odds = round(
-        1 / probability,
-        2
-    )
-
-    value = round(
-        ((odds / fair_odds) - 1) * 100,
-        2
-    )
-
-    return fair_odds, value
-
-
-
-
-# ---------------------------------------------
+# --------------------------------------------------
 # AI ANALIZĖ
-# ---------------------------------------------
+# --------------------------------------------------
 
 def analyze(matches):
+
 
     matches_text = str(matches)
 
 
+
     prompt = f"""
+
 Tu esi profesionalus ATP teniso analitikas ir value betting specialistas.
+
 
 Analizuok tik:
 
@@ -64,10 +49,17 @@ Duomenys:
 {matches_text}
 
 
-Atrink tik TOP 5 geriausius pasirinkimus.
+
+Atrink tik geriausius ATP pasirinkimus.
+
+
+Maksimaliai:
+5 pick'ai per dieną.
+
 
 
 Kiekvienam pateik:
+
 
 🎾 Mačas:
 
@@ -81,47 +73,76 @@ Kiekvienam pateik:
 
 📈 Value procentas:
 
-🎯 Sprendimas:
+🎯 Statusas:
+
 VALUE PICK arba SKIP
+
 
 
 Vertink:
 
-- dabartinę formą
-- paskutinius 10 mačų
+
+- ATP reitingą
+- paskutinių 10 mačų formą
 - dangą
 - H2H
-- ATP reitingą
 - servą
 - return žaidimą
 - fizinę būklę
 - koeficiento vertę
 
 
+
+TAISYKLĖ:
+
+
 Jeigu nėra aiškaus pranašumo:
-nerašyk pasirinkimo.
+
+NERODYK pasirinkimo.
 
 
-Jeigu value mažiau nei +5%:
-nerašyk pasirinkimo.
+
+Jeigu nėra koeficientų:
+
+rašyk:
+
+NO ODDS DATA
+
+
+
+Jeigu value mažiau nei 5%:
+
+SKIP.
+
 
 
 Formatas:
+
 
 🎾 TOP ATP VALUE PICKS OF THE DAY
 
 """
 
 
+
     response = client.chat.completions.create(
+
 
         model="gpt-4.1-mini",
 
+
         messages=[
+
             {
-                "role": "user",
-                "content": prompt
+
+                "role":
+                "user",
+
+                "content":
+                prompt
+
             }
+
         ]
 
     )
@@ -132,78 +153,128 @@ Formatas:
 
 
 
-# ---------------------------------------------
-# ISTORIJOS KAUPIMAS
-# ---------------------------------------------
+
+# --------------------------------------------------
+# ISTORIJA
+# --------------------------------------------------
 
 def save_history(prediction):
 
+
     file = "history.csv"
 
-    exists = os.path.isfile(file)
+
+    exists = os.path.isfile(
+        file
+    )
+
 
 
     with open(
+
         file,
+
         "a",
+
         newline="",
+
         encoding="utf-8"
+
     ) as f:
 
 
-        writer = csv.writer(f)
+
+        writer = csv.writer(
+            f
+        )
+
 
 
         if not exists:
 
             writer.writerow(
+
                 [
+
                     "date",
+
                     "prediction",
+
                     "result",
+
                     "profit"
+
                 ]
+
             )
 
 
+
         writer.writerow(
+
             [
-                datetime.now().strftime("%Y-%m-%d"),
-                prediction.replace("\n", " "),
+
+                datetime.now().strftime(
+                    "%Y-%m-%d"
+                ),
+
+                prediction.replace(
+                    "\n",
+                    " "
+                ),
+
                 "PENDING",
+
                 ""
+
             ]
+
         )
 
 
 
 
-# ---------------------------------------------
+
+# --------------------------------------------------
 # TELEGRAM
-# ---------------------------------------------
+# --------------------------------------------------
 
 def send_telegram(message):
 
+
     url = (
+
         "https://api.telegram.org/"
+
         f"bot{TELEGRAM_TOKEN}/sendMessage"
+
     )
+
 
 
     requests.post(
+
         url,
+
         json={
-            "chat_id": CHAT_ID,
-            "text": message
+
+            "chat_id":
+            CHAT_ID,
+
+            "text":
+            message
+
         }
+
     )
 
 
 
 
-# ---------------------------------------------
+
+# --------------------------------------------------
 # START
-# ---------------------------------------------
+# --------------------------------------------------
 
 matches = get_atp_matches()
 
@@ -211,44 +282,71 @@ matches = get_atp_matches()
 
 if matches["status"] == "empty":
 
+
     send_telegram(
+
         matches["message"]
+
     )
 
+
     print(
+
         "Nėra ATP TOP lygio mačų"
+
     )
+
 
     exit()
 
 
 
 
+
 prediction = analyze(
+
     matches["matches"]
+
 )
+
+
 
 
 
 save_history(
+
     prediction
+
 )
+
+
 
 
 
 telegram_message = (
+
     "🎾 ATP DAILY VALUE PICKS\n\n"
+
     + prediction
+
 )
+
+
 
 
 
 send_telegram(
+
     telegram_message
+
 )
 
 
 
+
+
 print(
+
     "ATP value prognozė išsiųsta"
+
 )
