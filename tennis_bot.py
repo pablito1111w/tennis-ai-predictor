@@ -1,10 +1,11 @@
-from tennis_data import get_atp_matches
 import os
 import csv
 from datetime import datetime
 
 import requests
 from openai import OpenAI
+
+from tennis_data import get_atp_matches
 
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
@@ -15,54 +16,43 @@ OPENAI_KEY = os.environ["OPENAI_KEY"]
 client = OpenAI(api_key=OPENAI_KEY)
 
 
-# --------------------------------------------------
-# ATP MAČAI
-# (vėliau prijungsime realų nemokamą API)
-# --------------------------------------------------
 
-def get_matches():
+def analyze(matches):
 
-    return """
-Šiandienos ATP mačai:
-
-1. Player A vs Player B
-Turnyras: ATP
-Danga: Hard
-
-2. Player C vs Player D
-Turnyras: ATP
-Danga: Clay
-"""
-
-
-# --------------------------------------------------
-# AI ANALIZĖ
-# --------------------------------------------------
-
-def analyze():
+    matches_text = str(matches)
 
     prompt = f"""
-
 Tu esi profesionalus ATP teniso analitikas.
 
-Analizuok tik ATP mačus:
+Analizuok tik ATP 500, ATP 1000 ir Grand Slam mačus.
 
-{}
+Šie duomenys:
+
+{matches_text}
 
 
-Atrink TIK geriausius 5 pasirinkimus.
+Atrink tik geriausius 5 pasirinkimus.
+
 
 Kiekvienam pateik:
 
 🎾 Mačas:
-🏆 Prognozė:
+
+🏆 Turnyras:
+
+✅ Prognozė:
+
 📊 Confidence procentas:
+
 💰 Value pick:
+
 📈 Tikėtinas rezultatas:
+
 📝 Argumentai:
 
 
 Vertink:
+
 - dabartinę formą
 - paskutinius 10 mačų
 - dangą
@@ -77,7 +67,8 @@ nerašyk pasirinkimo.
 
 
 Formatas:
-TOP ATP PICKS OF THE DAY
+
+🎾 TOP ATP PICKS OF THE DAY
 """
 
 
@@ -94,20 +85,17 @@ TOP ATP PICKS OF THE DAY
 
     )
 
-
     return response.choices[0].message.content
 
 
 
-# --------------------------------------------------
-# ISTORIJOS KAUPIMAS
-# --------------------------------------------------
 
 def save_history(prediction):
 
     file = "history.csv"
 
     exists = os.path.isfile(file)
+
 
     with open(
         file,
@@ -118,27 +106,30 @@ def save_history(prediction):
 
         writer = csv.writer(f)
 
+
         if not exists:
-            writer.writerow([
-                "date",
-                "prediction"
-            ])
-
-        writer.writerow([
-            datetime.now().strftime("%Y-%m-%d"),
-            prediction.replace("\n", " ")
-        ])
+            writer.writerow(
+                [
+                    "date",
+                    "prediction"
+                ]
+            )
 
 
+        writer.writerow(
+            [
+                datetime.now().strftime("%Y-%m-%d"),
+                prediction.replace("\n", " ")
+            ]
+        )
 
-# --------------------------------------------------
-# TELEGRAM
-# --------------------------------------------------
+
+
 
 def send_telegram(message):
 
     url = (
-        f"https://api.telegram.org/"
+        "https://api.telegram.org/"
         f"bot{TELEGRAM_TOKEN}/sendMessage"
     )
 
@@ -153,9 +144,8 @@ def send_telegram(message):
 
 
 
-# --------------------------------------------------
+
 # START
-# --------------------------------------------------
 
 matches = get_atp_matches()
 
