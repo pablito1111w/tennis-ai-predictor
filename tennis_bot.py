@@ -109,7 +109,7 @@ telegram_message = (
 )
 
 
-send_telegram("🎾 Testas - botas veikia!")
+send_telegram(telegram_message)
 
 
 print("Prognozė išsiųsta į Telegram")
