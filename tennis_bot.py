@@ -17,6 +17,10 @@ client = OpenAI(api_key=OPENAI_KEY)
 
 
 
+# ---------------------------------------------
+# AI ANALIZĖ
+# ---------------------------------------------
+
 def analyze(matches):
 
     matches_text = str(matches)
@@ -24,14 +28,19 @@ def analyze(matches):
     prompt = f"""
 Tu esi profesionalus ATP teniso analitikas.
 
-Analizuok tik ATP 500, ATP 1000 ir Grand Slam mačus.
+Analizuok tik:
 
-Šie duomenys:
+- ATP 500
+- ATP Masters 1000
+- Grand Slam
+
+
+Duomenys:
 
 {matches_text}
 
 
-Atrink tik geriausius 5 pasirinkimus.
+Atrink tik TOP 5 geriausius pasirinkimus.
 
 
 Kiekvienam pateik:
@@ -60,6 +69,8 @@ Vertink:
 - servą
 - return žaidimą
 - fizinę būklę
+- reitingų skirtumą
+- galimą value
 
 
 Jeigu nėra aiškaus pranašumo:
@@ -69,6 +80,7 @@ nerašyk pasirinkimo.
 Formatas:
 
 🎾 TOP ATP PICKS OF THE DAY
+
 """
 
 
@@ -85,10 +97,15 @@ Formatas:
 
     )
 
+
     return response.choices[0].message.content
 
 
 
+
+# ---------------------------------------------
+# ISTORIJOS KAUPIMAS
+# ---------------------------------------------
 
 def save_history(prediction):
 
@@ -126,6 +143,10 @@ def save_history(prediction):
 
 
 
+# ---------------------------------------------
+# TELEGRAM
+# ---------------------------------------------
+
 def send_telegram(message):
 
     url = (
@@ -145,11 +166,34 @@ def send_telegram(message):
 
 
 
+# ---------------------------------------------
 # START
+# ---------------------------------------------
 
 matches = get_atp_matches()
 
-prediction = analyze(matches)
+
+# Jeigu nėra tinkamų ATP turnyrų
+
+if matches["status"] == "empty":
+
+    send_telegram(
+        matches["message"]
+    )
+
+    print(
+        "Nėra ATP TOP lygio mačų"
+    )
+
+    exit()
+
+
+
+# Jeigu yra ATP mačai
+
+prediction = analyze(
+    matches["matches"]
+)
 
 
 save_history(prediction)
@@ -161,7 +205,11 @@ telegram_message = (
 )
 
 
-send_telegram(telegram_message)
+send_telegram(
+    telegram_message
+)
 
 
-print("ATP prognozė išsiųsta")
+print(
+    "ATP prognozė išsiųsta"
+)
