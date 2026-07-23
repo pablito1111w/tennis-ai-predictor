@@ -8,24 +8,68 @@ from tennis_data import get_atp_matches
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY")
 
 
+BASE_URL = "https://api.odds-api.io/v3"
+
+
 
 def get_events():
 
-    url = "https://api.odds-api.io/v3/events"
+    url = f"{BASE_URL}/events"
+
+    params = {
+        "apiKey": ODDS_API_KEY,
+        "sport": "tennis",
+        "status": "pending"
+    }
+
+    try:
+
+        r = requests.get(
+            url,
+            params=params,
+            timeout=20
+        )
+
+        r.raise_for_status()
+
+        data = r.json()
+
+        if isinstance(data, list):
+            return data
+
+        return []
+
+
+    except Exception as e:
+
+        print(
+            "EVENTS ERROR:",
+            e
+        )
+
+        return []
+
+
+
+
+
+def get_event_odds(event_id):
+
+
+    url = f"{BASE_URL}/odds"
 
 
     params = {
 
         "apiKey": ODDS_API_KEY,
 
-        "sport": "tennis",
-
-        "status": "pending"
+        "eventId": event_id
 
     }
 
 
     try:
+
 
         r = requests.get(
 
@@ -38,54 +82,91 @@ def get_events():
         )
 
 
-        r.raise_for_status()
+        if r.status_code != 200:
+
+            return {}
 
 
         data = r.json()
 
 
-        if isinstance(data, list):
 
-            return data
+        odds = {}
 
 
-        return []
+
+        if isinstance(data, dict):
+
+
+            markets = data.get(
+                "markets",
+                []
+            )
+
+
+            for market in markets:
+
+
+                for outcome in market.get(
+                    "outcomes",
+                    []
+                ):
+
+
+                    name = outcome.get(
+                        "name"
+                    )
+
+
+                    price = outcome.get(
+                        "price"
+                    )
+
+
+                    if name and price:
+
+
+                        odds[name] = price
+
+
+
+        return odds
 
 
 
     except Exception as e:
 
 
-        print(
-            "EVENTS ERROR:",
-            e
-        )
-
-
-        return []
+        return {}
 
 
 
 
 
 
-def normalize(value):
+def normalize(name):
 
 
-    if not value:
+    if not name:
 
         return ""
 
 
     return (
 
-        str(value)
+        str(name)
+
         .lower()
-        .replace(" ", "")
-        .replace(".", "")
-        .replace("-", "")
-        .replace(",", "")
-        .replace("'", "")
+
+        .replace(" ","")
+
+        .replace(".","")
+
+        .replace("-","")
+
+        .replace(",","")
+
+        .replace("'","")
 
     )
 
@@ -95,64 +176,7 @@ def normalize(value):
 
 
 
-def extract_odds(event):
-
-
-    odds = {}
-
-
-
-    # tiesioginis odds
-
-    if isinstance(event.get("odds"), dict):
-
-        return event["odds"]
-
-
-
-    # markets struktūra
-
-    markets = event.get(
-        "markets",
-        []
-    )
-
-
-
-    for market in markets:
-
-
-        for outcome in market.get(
-            "outcomes",
-            []
-        ):
-
-
-            name = outcome.get(
-                "name"
-            )
-
-
-            price = outcome.get(
-                "price"
-            )
-
-
-            if name and price:
-
-                odds[name] = price
-
-
-
-    return odds
-
-
-
-
-
-
-
-def find_odds(match, events):
+def find_event(match, events):
 
 
     p1 = normalize(
@@ -169,25 +193,33 @@ def find_odds(match, events):
     for event in events:
 
 
-        text = normalize(
-            json.dumps(event)
+        home = normalize(
+            event.get("home")
+        )
+
+
+        away = normalize(
+            event.get("away")
         )
 
 
 
-        if p1 in text and p2 in text:
+        if (
+
+            (p1 in home and p2 in away)
+
+            or
+
+            (p2 in home and p1 in away)
+
+        ):
 
 
-            odds = extract_odds(
-                event
-            )
-
-
-            return odds
+            return event
 
 
 
-    return {}
+    return None
 
 
 
@@ -207,7 +239,6 @@ def generate_report(matches):
     print(
         "------------------------"
     )
-
 
 
     total = 0
@@ -239,9 +270,13 @@ def generate_report(matches):
 
 
         print(
+
             match["player1"]["name"],
+
             "vs",
+
             match["player2"]["name"]
+
         )
 
 
@@ -260,12 +295,14 @@ def generate_report(matches):
 
 
 
+
     print()
 
     print(
         "TOTAL WITH ODDS:",
         total
     )
+
 
 
 
@@ -282,6 +319,7 @@ def main():
     )
 
 
+
     events = get_events()
 
 
@@ -293,20 +331,6 @@ def main():
 
 
 
-    if events:
-
-
-        print(
-            "\nDEBUG FIRST EVENT KEYS:"
-        )
-
-
-        print(
-            events[0].keys()
-        )
-
-
-
     matches = get_atp_matches(
         events
     )
@@ -315,14 +339,11 @@ def main():
 
     if matches["status"] == "empty":
 
-
         print(
             "Nėra ATP mačų"
         )
 
-
         return
-
 
 
 
@@ -336,7 +357,7 @@ def main():
 
 
 
-        odds = find_odds(
+        event = find_event(
 
             match,
 
@@ -346,13 +367,33 @@ def main():
 
 
 
-        match["odds"] = odds
+        if event:
+
+
+            event_id = event.get(
+                "id"
+            )
+
+
+            odds = get_event_odds(
+                event_id
+            )
+
+
+            match["odds"] = odds
 
 
 
-        if odds:
+            if odds:
 
-            found += 1
+                found += 1
+
+
+
+        else:
+
+            match["odds"] = {}
+
 
 
 
