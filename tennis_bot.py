@@ -1,6 +1,5 @@
 import os
 import csv
-import re
 from datetime import datetime
 
 import requests
@@ -70,7 +69,6 @@ Atrink tik TOP 5 geriausius pasirinkimus.
 
 Kiekvienam pateik:
 
-
 🎾 Mačas:
 
 🏆 Turnyras:
@@ -84,7 +82,6 @@ Kiekvienam pateik:
 📈 Value procentas:
 
 🎯 Sprendimas:
-
 VALUE PICK arba SKIP
 
 
@@ -100,8 +97,6 @@ Vertink:
 - fizinę būklę
 - koeficiento vertę
 
-
-Taisyklė:
 
 Jeigu nėra aiškaus pranašumo:
 nerašyk pasirinkimo.
@@ -155,6 +150,7 @@ def save_history(prediction):
         encoding="utf-8"
     ) as f:
 
+
         writer = csv.writer(f)
 
 
@@ -163,7 +159,9 @@ def save_history(prediction):
             writer.writerow(
                 [
                     "date",
-                    "prediction"
+                    "prediction",
+                    "result",
+                    "profit"
                 ]
             )
 
@@ -171,7 +169,9 @@ def save_history(prediction):
         writer.writerow(
             [
                 datetime.now().strftime("%Y-%m-%d"),
-                prediction.replace("\n", " ")
+                prediction.replace("\n", " "),
+                "PENDING",
+                ""
             ]
         )
 
@@ -209,8 +209,6 @@ matches = get_atp_matches()
 
 
 
-# Jeigu nėra tinkamų ATP turnyrų
-
 if matches["status"] == "empty":
 
     send_telegram(
@@ -225,7 +223,6 @@ if matches["status"] == "empty":
 
 
 
-# Analizė
 
 prediction = analyze(
     matches["matches"]
