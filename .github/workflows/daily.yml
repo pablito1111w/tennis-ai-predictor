@@ -1,5 +1,4 @@
 name: Daily Tennis AI Prediction
-
 on:
   schedule:
     - cron: "0 8 * * *"
