@@ -1,22 +1,31 @@
 from datetime import datetime
 
 
-def is_valid_atp_event(event):
+def is_valid_tournament(name):
 
-    league = event.get("league", {})
+    if not name:
+        return False
 
-    name = league.get("name", "").lower()
+    n = name.lower()
 
 
-    if "doubles" in name:
+    if "doubles" in n:
         return False
 
 
-    if "atp" in name:
+    if "utr" in n:
+        return False
+
+
+    if "itf" in n:
+        return False
+
+
+    if "atp" in n:
         return True
 
 
-    if "challenger" in name:
+    if "challenger" in n:
         return True
 
 
@@ -25,7 +34,40 @@ def is_valid_atp_event(event):
 
 
 
+def clean_player(name):
+
+    if not name:
+        return False
+
+
+    bad = [
+        "qf",
+        "r16",
+        "r32",
+        "wqf",
+        "wsf",
+        "winner",
+        "loser"
+    ]
+
+
+    low = name.lower()
+
+
+    for b in bad:
+
+        if b in low:
+            return False
+
+
+    return True
+
+
+
+
+
 def get_atp_matches(events):
+
 
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -33,12 +75,8 @@ def get_atp_matches(events):
     matches = []
 
 
+
     for event in events:
-
-
-        if not is_valid_atp_event(event):
-            continue
-
 
 
         league = event.get(
@@ -49,22 +87,35 @@ def get_atp_matches(events):
 
         tournament = league.get(
             "name",
-            "Unknown"
+            ""
         )
 
 
 
-        home = event.get(
+        if not is_valid_tournament(tournament):
+
+            continue
+
+
+
+        player1 = event.get(
             "home"
         )
 
 
-        away = event.get(
+        player2 = event.get(
             "away"
         )
 
 
-        if not home or not away:
+
+        if not clean_player(player1):
+
+            continue
+
+
+        if not clean_player(player2):
+
             continue
 
 
@@ -80,14 +131,14 @@ def get_atp_matches(events):
 
             "player1": {
 
-                "name": home
+                "name": player1
 
             },
 
 
             "player2": {
 
-                "name": away
+                "name": player2
 
             },
 
@@ -98,8 +149,8 @@ def get_atp_matches(events):
 
 
 
-    if not matches:
 
+    if not matches:
 
         return {
 
