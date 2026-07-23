@@ -1,14 +1,17 @@
 from datetime import datetime
 
 
+
 def is_valid_tournament(name):
 
     if not name:
         return False
 
+
     n = name.lower()
 
 
+    # išmetam nereikalingus
     if "doubles" in n:
         return False
 
@@ -21,6 +24,7 @@ def is_valid_tournament(name):
         return False
 
 
+    # paliekam ATP ir Challenger
     if "atp" in n:
         return True
 
@@ -34,30 +38,39 @@ def is_valid_tournament(name):
 
 
 
+
+
 def clean_player(name):
 
     if not name:
         return False
 
 
-    bad = [
+    bad_names = [
+
         "qf",
         "r16",
         "r32",
+        "r64",
         "wqf",
         "wsf",
         "winner",
-        "loser"
+        "loser",
+        "qualifier",
+        "tbd"
+
     ]
 
 
-    low = name.lower()
+    n = str(name).lower()
 
 
-    for b in bad:
+    for bad in bad_names:
 
-        if b in low:
+        if bad in n:
+
             return False
+
 
 
     return True
@@ -66,10 +79,14 @@ def clean_player(name):
 
 
 
+
+
 def get_atp_matches(events):
 
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now().strftime(
+        "%Y-%m-%d"
+    )
 
 
     matches = []
@@ -92,80 +109,108 @@ def get_atp_matches(events):
 
 
 
-        if not is_valid_tournament(tournament):
+        if not is_valid_tournament(
+            tournament
+        ):
 
             continue
 
 
 
-        player1 = event.get(
+
+
+        home = event.get(
             "home"
         )
 
 
-        player2 = event.get(
+        away = event.get(
             "away"
         )
 
 
 
-        if not clean_player(player1):
+        if not clean_player(home):
 
             continue
 
 
-        if not clean_player(player2):
+
+        if not clean_player(away):
 
             continue
+
 
 
 
         matches.append({
 
+
             "date": today,
 
-            "event_id": event.get("id"),
+
+            "event_id": event.get(
+                "id"
+            ),
+
+
 
             "tournament": tournament,
 
 
+
             "player1": {
 
-                "name": player1
+                "name": home
 
             },
+
 
 
             "player2": {
 
-                "name": player2
+                "name": away
 
             },
 
 
+
             "odds": {}
+
+
 
         })
 
 
 
 
-    if not matches:
+
+
+    if len(matches) == 0:
+
 
         return {
 
-            "status":"empty",
 
-            "matches":[]
+            "status": "empty",
+
+
+            "matches": []
 
         }
 
 
 
+
+
+
+
     return {
 
-        "status":"ok",
 
-        "matches":matches
+        "status": "ok",
+
+
+        "matches": matches
 
     }
