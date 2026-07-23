@@ -13,33 +13,80 @@ def get_atp_matches():
     today = datetime.now().strftime("%Y-%m-%d")
 
 
-    # ČIA VĖLIAU BUS REALUS API
-    # Dabar testuojame filtravimo logiką
+    # Laikina struktūra.
+    # Vėliau šią vietą pakeis realus duomenų gavimas.
 
     all_matches = [
 
         {
             "date": today,
+
             "tournament": "ATP Masters 1000",
+
             "surface": "Hard",
-            "player1": "Player A",
-            "player2": "Player B",
-            "ranking1": 3,
-            "ranking2": 8
+
+            "player1": {
+                "name": "Jannik Sinner",
+                "ranking": 1,
+                "form": "8 wins / 10 matches",
+                "serve_rating": 9,
+                "return_rating": 9
+            },
+
+
+            "player2": {
+                "name": "Daniil Medvedev",
+                "ranking": 6,
+                "form": "6 wins / 10 matches",
+                "serve_rating": 8,
+                "return_rating": 8
+            },
+
+
+            "h2h": "Sinner leads 6-5",
+
+            "odds": {
+                "player1": 1.55,
+                "player2": 2.60
+            }
         },
 
 
         {
             "date": today,
-            "tournament": "ATP 250",
+
+            "tournament": "ATP 500",
+
             "surface": "Clay",
-            "player1": "Player C",
-            "player2": "Player D",
-            "ranking1": 40,
-            "ranking2": 55
+
+            "player1": {
+                "name": "Carlos Alcaraz",
+                "ranking": 2,
+                "form": "9 wins / 10 matches",
+                "serve_rating": 9,
+                "return_rating": 9
+            },
+
+
+            "player2": {
+                "name": "Casper Ruud",
+                "ranking": 8,
+                "form": "7 wins / 10 matches",
+                "serve_rating": 8,
+                "return_rating": 8
+            },
+
+
+            "h2h": "Alcaraz leads 4-1",
+
+            "odds": {
+                "player1": 1.40,
+                "player2": 3.00
+            }
         }
 
     ]
+
 
 
     filtered = []
@@ -48,6 +95,7 @@ def get_atp_matches():
     for match in all_matches:
 
         if match["tournament"] in ALLOWED_TOURNAMENTS:
+
             filtered.append(match)
 
 
