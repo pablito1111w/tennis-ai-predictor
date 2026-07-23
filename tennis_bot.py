@@ -1,6 +1,6 @@
 import os
-import json
 from datetime import datetime
+import requests
 
 from tennis_data import get_atp_matches
 
@@ -10,62 +10,42 @@ ODDS_API_KEY = os.environ.get(
 )
 
 
-
 def get_events():
-
-    import requests
-
 
     url = "https://api.odds-api.io/v3/events"
 
-
     params = {
 
-        "apiKey":
-        ODDS_API_KEY,
+        "apiKey": ODDS_API_KEY,
 
-        "sport":
-        "tennis",
+        "sport": "tennis",
 
-        "status":
-        "pending"
+        "status": "pending"
     }
-
 
     try:
 
         response = requests.get(
-
             url,
-
             params=params,
-
             timeout=20
         )
 
-
         response.raise_for_status()
-
 
         data = response.json()
 
-
         if isinstance(data, list):
-
             return data
-
 
         return []
 
-
     except Exception as e:
-
 
         print(
             "Odds API klaida:",
             e
         )
-
 
         return []
 
@@ -75,7 +55,6 @@ def get_events():
 
 def print_events(events):
 
-
     print(
         "===== TENNIS EVENTS ====="
     )
@@ -83,18 +62,15 @@ def print_events(events):
 
     for event in events:
 
-
         league = event.get(
             "league",
             {}
         )
 
-
         name = league.get(
             "name",
             "Unknown"
         )
-
 
         print(
             "TOURNAMENT:",
@@ -102,10 +78,106 @@ def print_events(events):
         )
 
 
-
     print(
         "===== END EVENTS ====="
     )
+
+
+
+
+
+
+def extract_odds(event):
+
+    odds = {}
+
+
+    markets = event.get(
+        "markets",
+        []
+    )
+
+
+    for market in markets:
+
+        outcomes = market.get(
+            "outcomes",
+            []
+        )
+
+
+        for outcome in outcomes:
+
+            name = outcome.get(
+                "name"
+            )
+
+
+            price = outcome.get(
+                "price"
+            )
+
+
+            if name and price:
+
+                odds[name] = price
+
+
+
+    return odds
+
+
+
+
+
+
+def attach_odds(matches, events):
+
+
+    if matches.get("status") == "empty":
+
+        return matches
+
+
+
+    for match in matches["matches"]:
+
+
+        player1 = match["player1"]["name"]
+
+        player2 = match["player2"]["name"]
+
+
+        found_odds = {}
+
+
+
+        for event in events:
+
+
+            event_text = str(event).lower()
+
+
+            if (
+                player1.lower() in event_text
+                and
+                player2.lower() in event_text
+            ):
+
+                found_odds = extract_odds(
+                    event
+                )
+
+                break
+
+
+
+        match["odds"] = found_odds
+
+
+
+    return matches
+
 
 
 
@@ -135,6 +207,7 @@ def generate_value_report(matches):
     print()
 
 
+
     if matches.get("status") == "empty":
 
 
@@ -142,23 +215,36 @@ def generate_value_report(matches):
             f"Šiandien ({today}) nėra ATP mačų su pakankamais duomenimis VALUE analizei."
         )
 
+
         print()
 
         print(
             "STATUS: NO ODDS DATA"
         )
 
-        print()
-
-        print(
-            "================="
-        )
 
         return
 
 
 
+
+
+
     for match in matches["matches"]:
+
+
+
+        odds = match.get(
+            "odds",
+            {}
+        )
+
+
+
+        if not odds:
+
+            continue
+
 
 
         print(
@@ -176,12 +262,12 @@ def generate_value_report(matches):
 
         print(
             "ODDS:",
-            match["odds"]
+            odds
         )
 
 
         print(
-            "STATUS: NEED ANALYSIS"
+            "STATUS: READY FOR ANALYSIS"
         )
 
 
@@ -195,8 +281,8 @@ def generate_value_report(matches):
 
 
 
-def main():
 
+def main():
 
     print(
         "Paleidžiama ATP analizė..."
@@ -209,7 +295,6 @@ def main():
 
     if not events:
 
-
         print(
             "Nerasta įvykių"
         )
@@ -219,18 +304,20 @@ def main():
 
 
 
-    # parodyti visus API turnyrus loge
-
     print_events(
         events
     )
 
 
 
-    # SVARBUS PAKEITIMAS
-    # perduodam events į get_atp_matches()
-
     matches = get_atp_matches(
+        events
+    )
+
+
+
+    matches = attach_odds(
+        matches,
         events
     )
 
@@ -245,8 +332,6 @@ def main():
 
 
 
-
 if __name__ == "__main__":
-
 
     main()
