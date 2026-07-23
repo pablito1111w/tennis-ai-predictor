@@ -21,29 +21,16 @@ client = OpenAI(api_key=OPENAI_KEY)
 
 def get_matches():
 
-    url = "https://www.scorebat.com/tennis-live-scores/"
+    return """
+Šiandienos ATP mačai:
 
-    try:
-        response = requests.get(
-            url,
-            timeout=10
-        )
+1. Player A vs Player B
+Turnyras: ATP
+Danga: Hard
 
-        text = response.text
-
-        return f"""
-Šiandienos ATP teniso informacija:
-
-{text[:4000]}
-"""
-
-    except Exception as e:
-
-        return f"""
-Nepavyko gauti ATP duomenų.
-
-Klaida:
-{e}
+2. Player C vs Player D
+Turnyras: ATP
+Danga: Clay
 """
 
 
