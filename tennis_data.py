@@ -1,50 +1,67 @@
 import os
-import requests
 from datetime import datetime
+
+import requests
 
 
 ODDS_API_KEY = os.environ["ODDS_API_KEY"]
 
 
-ALLOWED_TOURNAMENTS = [
-    "ATP 500",
-    "ATP Masters 1000",
-    "Grand Slam"
+ALLOWED_KEYWORDS = [
+    "atp",
+    "masters",
+    "grand slam",
+    "wimbledon",
+    "us open",
+    "australian open",
+    "roland garros",
+    "french open"
 ]
 
 
+def get_events():
 
-def get_odds_matches():
-
-    url = "https://api.odds-api.io/v3/odds"
+    url = "https://api.odds-api.io/v3/events"
 
     params = {
         "apiKey": ODDS_API_KEY,
         "sport": "tennis",
-        "region": "eu"
+        "status": "pending"
     }
 
+    try:
 
-    response = requests.get(
-        url,
-        params=params,
-        timeout=20
-    )
-
-
-    if response.status_code != 200:
-
-        print(
-            "Odds API klaida:",
-            response.text
+        response = requests.get(
+            url,
+            params=params,
+            timeout=20
         )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        if isinstance(data, list):
+            return data
+
+        return []
+
+    except Exception as e:
+
+        print("Odds API klaida:", str(e))
 
         return []
 
 
 
-    return response.json()
+def is_top_atp_tournament(league_name):
 
+    league_name = league_name.lower()
+
+    return any(
+        keyword in league_name
+        for keyword in ALLOWED_KEYWORDS
+    )
 
 
 
@@ -52,115 +69,69 @@ def get_atp_matches():
 
     today = datetime.now().strftime("%Y-%m-%d")
 
-
-    odds_data = get_odds_matches()
-
+    events = get_events()
 
     matches = []
 
+    for event in events:
 
-    for game in odds_data:
+        league = event.get("league", {})
 
-
-        tournament = game.get(
-            "league",
-            ""
+        tournament = league.get(
+            "name",
+            "Unknown Tournament"
         )
 
-
-        if not any(
-            x in tournament
-            for x in ALLOWED_TOURNAMENTS
+        if not is_top_atp_tournament(
+            tournament
         ):
             continue
 
+        match = {
 
+            "date": today,
 
-        matches.append(
+            "event_id":
+            event.get("id"),
 
-            {
-                "date": today,
+            "tournament":
+            tournament,
 
-                "tournament": tournament,
+            "player1": {
+                "name":
+                event.get("home", "Unknown"),
+                "ranking":
+                "unknown",
+                "form":
+                "unknown"
+            },
 
+            "player2": {
+                "name":
+                event.get("away", "Unknown"),
+                "ranking":
+                "unknown",
+                "form":
+                "unknown"
+            },
 
-                "player1": {
-                    "name":
-                    game["home_team"],
+            "odds": {},
 
-                    "ranking":
-                    "unknown",
+            "h2h":
+            "unknown"
+        }
 
-                    "form":
-                    "unknown",
-
-                    "serve_rating":
-                    "unknown",
-
-                    "return_rating":
-                    "unknown"
-                },
-
-
-                "player2": {
-                    "name":
-                    game["away_team"],
-
-                    "ranking":
-                    "unknown",
-
-                    "form":
-                    "unknown",
-
-                    "serve_rating":
-                    "unknown",
-
-                    "return_rating":
-                    "unknown"
-                },
-
-
-                "h2h":
-                "reikia papildyti",
-
-
-                "odds": {
-
-                    "player1":
-                    game.get(
-                        "home_odds",
-                        None
-                    ),
-
-                    "player2":
-                    game.get(
-                        "away_odds",
-                        None
-                    )
-                }
-            }
-
-        )
-
-
+        matches.append(match)
 
     if len(matches) == 0:
 
         return {
-
             "status": "empty",
-
             "message":
-            "🎾 Šiandien nėra tinkamų ATP TOP lygio mačų"
-
+            "🎾 Šiandien nerasta ATP 500 / ATP Masters 1000 / Grand Slam mačų"
         }
 
-
-
     return {
-
         "status": "ok",
-
         "matches": matches
-
     }
