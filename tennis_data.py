@@ -1,36 +1,23 @@
 from datetime import datetime
 
 
-def is_top_atp_tournament(league_name):
+def is_valid_atp_event(event):
 
-    if not league_name:
-        return False
+    league = event.get("league", {})
 
-    name = league_name.lower()
+    name = league.get("name", "").lower()
 
 
-    # išmetam dvejetus
     if "doubles" in name:
         return False
 
 
-    # ATP pagrindiniai
     if "atp" in name:
         return True
 
 
-    grand_slams = [
-        "wimbledon",
-        "us open",
-        "australian open",
-        "roland garros",
-        "french open"
-    ]
-
-
-    for item in grand_slams:
-        if item in name:
-            return True
+    if "challenger" in name:
+        return True
 
 
     return False
@@ -38,35 +25,7 @@ def is_top_atp_tournament(league_name):
 
 
 
-
-def get_player(event, side):
-
-    possible = [
-
-        event.get(side),
-
-        event.get(
-            "participants",
-            {}
-        ).get(side),
-
-    ]
-
-
-    for item in possible:
-
-        if item:
-            return item
-
-
-    return "Unknown"
-
-
-
-
-
 def get_atp_matches(events):
-
 
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -74,8 +33,12 @@ def get_atp_matches(events):
     matches = []
 
 
-
     for event in events:
+
+
+        if not is_valid_atp_event(event):
+            continue
+
 
 
         league = event.get(
@@ -86,119 +49,52 @@ def get_atp_matches(events):
 
         tournament = league.get(
             "name",
-            ""
+            "Unknown"
         )
 
 
-        if not is_top_atp_tournament(tournament):
 
-            continue
-
-
-
-        home = get_player(
-            event,
+        home = event.get(
             "home"
         )
 
 
-        away = get_player(
-            event,
+        away = event.get(
             "away"
         )
 
 
-
-        # jei API naudoja kitus laukus
-
-        if home == "Unknown":
-
-            home = event.get(
-                "home_team",
-                "Unknown"
-            )
-
-
-
-        if away == "Unknown":
-
-            away = event.get(
-                "away_team",
-                "Unknown"
-            )
-
-
-
-
-        if home == "Unknown" or away == "Unknown":
-
+        if not home or not away:
             continue
 
 
 
+        matches.append({
+
+            "date": today,
+
+            "event_id": event.get("id"),
+
+            "tournament": tournament,
 
 
-        match = {
+            "player1": {
 
-
-            "date":
-            today,
-
-
-            "event_id":
-            event.get(
-                "id"
-            ),
-
-
-
-            "tournament":
-            tournament,
-
-
-
-            "player1":
-            {
-
-                "name":
-                home
+                "name": home
 
             },
 
 
+            "player2": {
 
-            "player2":
-            {
-
-                "name":
-                away
+                "name": away
 
             },
 
 
+            "odds": {}
 
-            "odds":
-            event.get(
-                "odds",
-                {}
-            )
-
-        }
-
-
-
-        matches.append(
-            match
-        )
-
-
-
-
-
-    print(
-        "ATP MATCHES FOUND:",
-        len(matches)
-    )
+        })
 
 
 
@@ -207,12 +103,9 @@ def get_atp_matches(events):
 
         return {
 
-            "status":
-            "empty",
+            "status":"empty",
 
-
-            "matches":
-            []
+            "matches":[]
 
         }
 
@@ -220,12 +113,8 @@ def get_atp_matches(events):
 
     return {
 
+        "status":"ok",
 
-        "status":
-        "ok",
-
-
-        "matches":
-        matches
+        "matches":matches
 
     }
