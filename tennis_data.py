@@ -7,22 +7,10 @@ import requests
 ODDS_API_KEY = os.environ["ODDS_API_KEY"]
 
 
-ALLOWED_KEYWORDS = [
-    "atp",
-    "masters",
-    "grand slam",
-    "wimbledon",
-    "us open",
-    "australian open",
-    "roland garros",
-    "french open"
-]
 
-
-
-# ---------------------------------------------
-# GAUTI TENISO EVENTUS
-# ---------------------------------------------
+# --------------------------------------------------
+# GET EVENTS FROM ODDS API
+# --------------------------------------------------
 
 def get_events():
 
@@ -70,28 +58,76 @@ def get_events():
 
 
 
-# ---------------------------------------------
-# ATP TURNYRO FILTRAS
-# ---------------------------------------------
+# --------------------------------------------------
+# ATP TOP TURNYRŲ FILTRAS
+# --------------------------------------------------
 
 def is_top_atp_tournament(league_name):
 
-    league_name = league_name.lower()
+
+    name = league_name.lower()
+
+
+
+    # pašalinam nereikalingus
+
+    banned = [
+
+        "wta",
+        "women",
+        "doubles",
+        "double",
+        "challenger",
+        "itf",
+        "utr",
+        "qualifier",
+        "qualification"
+
+    ]
+
+
+    for word in banned:
+
+        if word in name:
+
+            return False
+
+
+
+
+    # paliekam tik ATP TOP
+
+    allowed = [
+
+        "atp",
+        "masters",
+        "grand slam",
+        "wimbledon",
+        "us open",
+        "australian open",
+        "roland garros",
+        "french open"
+
+    ]
 
 
     return any(
-        keyword in league_name
-        for keyword in ALLOWED_KEYWORDS
+
+        word in name
+
+        for word in allowed
+
     )
 
 
 
 
-# ---------------------------------------------
-# ATP MAČAI
-# ---------------------------------------------
+# --------------------------------------------------
+# ATP MATCHES
+# --------------------------------------------------
 
 def get_atp_matches():
+
 
     today = datetime.now().strftime(
         "%Y-%m-%d"
@@ -101,32 +137,9 @@ def get_atp_matches():
     events = get_events()
 
 
-    print("")
-    print("===== TENNIS EVENTS =====")
-
-
-    for event in events:
-
-        league = event.get(
-            "league",
-            {}
-        )
-
-
-        tournament = league.get(
-            "name",
-            "Unknown Tournament"
-        )
-
-
-        print(
-            "TOURNAMENT:",
-            tournament
-        )
-
 
     print(
-        "===== END EVENTS ====="
+        "\n===== TENNIS EVENTS ====="
     )
 
 
@@ -137,15 +150,33 @@ def get_atp_matches():
     for event in events:
 
 
+
         league = event.get(
             "league",
             {}
         )
 
 
-        tournament = league.get(
-            "name",
-            "Unknown Tournament"
+
+        if isinstance(league, dict):
+
+            tournament = league.get(
+                "name",
+                ""
+            )
+
+        else:
+
+            tournament = str(
+                league
+            )
+
+
+
+
+        print(
+            "TOURNAMENT:",
+            tournament
         )
 
 
@@ -153,8 +184,22 @@ def get_atp_matches():
         if not is_top_atp_tournament(
             tournament
         ):
+
             continue
 
+
+
+
+        home = event.get(
+            "home",
+            "Unknown"
+        )
+
+
+        away = event.get(
+            "away",
+            "Unknown"
+        )
 
 
 
@@ -177,58 +222,54 @@ def get_atp_matches():
 
 
 
-            "player1": {
+            "player1":
+            {
 
                 "name":
-                event.get(
-                    "home",
-                    "Unknown"
-                ),
+                home,
+
 
                 "ranking":
                 "unknown",
 
+
                 "form":
-                "unknown",
-
-                "serve_rating":
-                "unknown",
-
-                "return_rating":
                 "unknown"
+
             },
 
 
 
-            "player2": {
+            "player2":
+            {
 
                 "name":
-                event.get(
-                    "away",
-                    "Unknown"
-                ),
+                away,
+
 
                 "ranking":
                 "unknown",
 
+
                 "form":
-                "unknown",
-
-                "serve_rating":
-                "unknown",
-
-                "return_rating":
                 "unknown"
+
             },
 
 
 
-            "odds": {},
+            "odds":
+
+            event.get(
+                "odds",
+                {}
+            ),
 
 
 
             "h2h":
             "unknown"
+
 
         }
 
@@ -237,6 +278,13 @@ def get_atp_matches():
         matches.append(
             match
         )
+
+
+
+
+    print(
+        "===== END EVENTS =====\n"
+    )
 
 
 
@@ -253,10 +301,9 @@ def get_atp_matches():
 
             "message":
 
-            "🎾 Šiandien nerasta ATP 500 / ATP Masters 1000 / Grand Slam mačų"
+            "🎾 Šiandien nėra ATP 500 / Masters 1000 / Grand Slam mačų"
 
         }
-
 
 
 
