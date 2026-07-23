@@ -32,37 +32,13 @@ def get_events():
 
         data = r.json()
 
-        return data if isinstance(data, list) else []
+        return data if isinstance(data,list) else []
 
 
     except Exception as e:
 
-        print(
-            "EVENT ERROR:",
-            e
-        )
-
+        print("EVENT ERROR:",e)
         return []
-
-
-
-
-
-def normalize(x):
-
-    if not x:
-        return ""
-
-    return (
-        str(x)
-        .lower()
-        .replace(" ","")
-        .replace(".","")
-        .replace("-","")
-        .replace(",","")
-        .replace("'","")
-    )
-
 
 
 
@@ -70,30 +46,19 @@ def normalize(x):
 
 def get_event_odds(event_id):
 
-
-    url = f"{BASE_URL}/odds"
-
+    url = f"{BASE_URL}/odds/{event_id}"
 
     params = {
-
-        "apiKey": ODDS_API_KEY,
-
-        "eventId": event_id
-
+        "apiKey": ODDS_API_KEY
     }
 
 
     try:
 
-
         r = requests.get(
-
             url,
-
             params=params,
-
             timeout=20
-
         )
 
 
@@ -102,16 +67,13 @@ def get_event_odds(event_id):
             return {}
 
 
-
         data = r.json()
-
 
 
         odds = {}
 
 
-
-        if isinstance(data, dict):
+        if isinstance(data,dict):
 
 
             markets = data.get(
@@ -133,7 +95,6 @@ def get_event_odds(event_id):
                         "name"
                     )
 
-
                     price = outcome.get(
                         "price"
                     )
@@ -141,7 +102,7 @@ def get_event_odds(event_id):
 
                     if name and price:
 
-                        odds[name] = price
+                        odds[name]=price
 
 
 
@@ -160,18 +121,41 @@ def get_event_odds(event_id):
 
 
 
-def find_event(match, events):
+def normalize(x):
+
+    if not x:
+        return ""
+
+
+    return (
+
+        str(x)
+        .lower()
+        .replace(" ","")
+        .replace(".","")
+        .replace("-","")
+        .replace(",","")
+        .replace("'","")
+
+    )
+
+
+
+
+
+
+
+
+def find_event(match,events):
 
 
     p1 = normalize(
         match["player1"]["name"]
     )
 
-
     p2 = normalize(
         match["player2"]["name"]
     )
-
 
 
     for event in events:
@@ -187,7 +171,6 @@ def find_event(match, events):
         )
 
 
-
         if (
 
             (p1 in home and p2 in away)
@@ -197,7 +180,6 @@ def find_event(match, events):
             (p2 in home and p1 in away)
 
         ):
-
 
             return event
 
@@ -215,48 +197,40 @@ def report(matches):
 
 
     print()
-
-    print(
-        "🎾 ATP DAILY VALUE PICKS"
-    )
-
-    print(
-        "------------------------"
-    )
+    print("🎾 ATP DAILY VALUE PICKS")
+    print("------------------------")
 
 
     total = 0
 
 
 
-    for match in matches["matches"]:
+    for m in matches["matches"]:
 
 
-        odds = match.get(
+        odds = m.get(
             "odds",
             {}
         )
 
 
         if not odds:
-
             continue
 
 
 
         print()
 
-
         print(
             "TOURNAMENT:",
-            match["tournament"]
+            m["tournament"]
         )
 
 
         print(
-            match["player1"]["name"],
+            m["player1"]["name"],
             "vs",
-            match["player2"]["name"]
+            m["player2"]["name"]
         )
 
 
@@ -266,12 +240,11 @@ def report(matches):
         )
 
 
-        print(
-            "----------------"
-        )
+        print("----------------")
 
 
-        total += 1
+        total+=1
+
 
 
 
@@ -288,6 +261,8 @@ def report(matches):
 
 
 
+
+
 def main():
 
 
@@ -297,8 +272,7 @@ def main():
 
 
 
-    events = get_events()
-
+    events=get_events()
 
 
     print(
@@ -308,64 +282,53 @@ def main():
 
 
 
-    matches = get_atp_matches(
+    matches=get_atp_matches(
         events
     )
 
 
 
-    if matches["status"] == "empty":
-
-        print(
-            "Nėra ATP mačų"
-        )
-
-        return
-
-
-
-
-    found = 0
+    found=0
 
 
 
     for match in matches["matches"]:
 
 
-        event = find_event(
+
+        event=find_event(
             match,
             events
         )
 
 
-        if not event:
+
+        if event:
 
 
-            match["odds"] = {}
-
-            continue
-
-
+            event_id=event.get(
+                "id"
+            )
 
 
-        event_id = event.get(
-            "id"
-        )
+            odds=get_event_odds(
+                event_id
+            )
 
 
-        odds = get_event_odds(
-            event_id
-        )
-
-
-        match["odds"] = odds
+            match["odds"]=odds
 
 
 
-        if odds:
+            if odds:
 
-            found += 1
+                found+=1
 
+
+
+        else:
+
+            match["odds"]={}
 
 
 
@@ -376,15 +339,14 @@ def main():
 
 
 
-    report(
-        matches
-    )
+    report(matches)
 
 
 
 
 
 
-if __name__ == "__main__":
+
+if __name__=="__main__":
 
     main()
