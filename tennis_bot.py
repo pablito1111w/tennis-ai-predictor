@@ -4,11 +4,9 @@ import requests
 from tennis_data import get_atp_matches
 
 
-
 ODDS_API_KEY = os.environ.get(
     "ODDS_API_KEY"
 )
-
 
 
 
@@ -18,17 +16,15 @@ def get_events():
     url = "https://api.odds-api.io/v3/events"
 
 
-
     params = {
 
-        "apiKey": ODDS_API_KEY,
+        "apiKey":ODDS_API_KEY,
 
         "sport":"tennis",
 
         "status":"pending"
 
     }
-
 
 
     r = requests.get(
@@ -44,26 +40,27 @@ def get_events():
     data = r.json()
 
 
+    if isinstance(data,list):
 
-    return data if isinstance(data,list) else []
-
-
-
+        return data
 
 
+    return []
 
-def extract_odds(event):
+
+
+
+
+def get_market_odds(event):
 
 
     result = {}
-
 
 
     markets = event.get(
         "markets",
         []
     )
-
 
 
     for market in markets:
@@ -98,31 +95,29 @@ def extract_odds(event):
 
 
 
-def match_odds(match,events):
+
+def add_odds(matches,events):
 
 
-    p1 = match["player1"]["name"].lower()
-
-    p2 = match["player2"]["name"].lower()
+    for match in matches["matches"]:
 
 
-
-    for event in events:
-
-
-        text = str(event).lower()
+        eid = match["event_id"]
 
 
+        for event in events:
 
-        if p1 in text and p2 in text:
+
+            if event.get("id")==eid:
 
 
-            return extract_odds(event)
+                match["odds"]=get_market_odds(event)
+
+                break
 
 
 
-    return {}
-
+    return matches
 
 
 
@@ -130,42 +125,29 @@ def match_odds(match,events):
 
 
 
-def generate_report(matches):
+def report(matches):
 
 
-    print("\n🎾 ATP DAILY VALUE PICKS\n")
+    print()
 
+    print(
+        "🎾 ATP DAILY VALUE PICKS"
+    )
 
-
-    if matches["status"]=="empty":
-
-
-        print(
-            "Nėra ATP mačų"
-        )
-
-        return
+    print(
+        "------------------------"
+    )
 
 
 
-
-    count=0
+    counter=0
 
 
 
     for m in matches["matches"]:
 
 
-        odds=m.get(
-            "odds"
-        )
-
-
-
-        print(
-            "--------------------------------"
-        )
-
+        print()
 
         print(
             "TOURNAMENT:",
@@ -174,45 +156,49 @@ def generate_report(matches):
 
 
         print(
+
             m["player1"]["name"],
+
             "vs",
+
             m["player2"]["name"]
+
         )
 
 
 
-        if odds:
+        if m["odds"]:
 
 
             print(
                 "ODDS:",
-                odds
-            )
-
-
-            print(
-                "STATUS: READY"
+                m["odds"]
             )
 
 
         else:
 
-
             print(
-                "ODDS: NOT FOUND"
+                "ODDS: NO DATA"
             )
 
 
-        count+=1
+
+        print(
+            "----------------"
+        )
+
+
+        counter+=1
 
 
 
+    print()
 
     print(
-        "\nTOTAL MATCHES:",
-        count
+        "TOTAL MATCHES:",
+        counter
     )
-
 
 
 
@@ -228,9 +214,7 @@ def main():
     )
 
 
-
     events=get_events()
-
 
 
     print(
@@ -245,24 +229,15 @@ def main():
     )
 
 
-
-
-    for m in matches.get("matches",[]):
-
-
-        m["odds"]=match_odds(
-            m,
-            events
-        )
-
-
-
-    generate_report(
-        matches
+    matches=add_odds(
+        matches,
+        events
     )
 
 
-
+    report(
+        matches
+    )
 
 
 
