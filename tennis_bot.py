@@ -1,5 +1,6 @@
 import os
 import csv
+import re
 from datetime import datetime
 
 import requests
@@ -18,6 +19,29 @@ client = OpenAI(api_key=OPENAI_KEY)
 
 
 # ---------------------------------------------
+# VALUE SKAIČIAVIMAS
+# ---------------------------------------------
+
+def calculate_value(probability, odds):
+
+    probability = probability / 100
+
+    fair_odds = round(
+        1 / probability,
+        2
+    )
+
+    value = round(
+        ((odds / fair_odds) - 1) * 100,
+        2
+    )
+
+    return fair_odds, value
+
+
+
+
+# ---------------------------------------------
 # AI ANALIZĖ
 # ---------------------------------------------
 
@@ -25,8 +49,9 @@ def analyze(matches):
 
     matches_text = str(matches)
 
+
     prompt = f"""
-Tu esi profesionalus ATP teniso analitikas.
+Tu esi profesionalus ATP teniso analitikas ir value betting specialistas.
 
 Analizuok tik:
 
@@ -45,19 +70,22 @@ Atrink tik TOP 5 geriausius pasirinkimus.
 
 Kiekvienam pateik:
 
+
 🎾 Mačas:
 
 🏆 Turnyras:
 
 ✅ Prognozė:
 
-📊 Confidence procentas:
+📊 Tikimybė procentais:
 
-💰 Value pick:
+💰 Koeficientas:
 
-📈 Tikėtinas rezultatas:
+📈 Value procentas:
 
-📝 Argumentai:
+🎯 Sprendimas:
+
+VALUE PICK arba SKIP
 
 
 Vertink:
@@ -66,20 +94,26 @@ Vertink:
 - paskutinius 10 mačų
 - dangą
 - H2H
+- ATP reitingą
 - servą
 - return žaidimą
 - fizinę būklę
-- reitingų skirtumą
-- galimą value
+- koeficiento vertę
 
+
+Taisyklė:
 
 Jeigu nėra aiškaus pranašumo:
 nerašyk pasirinkimo.
 
 
+Jeigu value mažiau nei +5%:
+nerašyk pasirinkimo.
+
+
 Formatas:
 
-🎾 TOP ATP PICKS OF THE DAY
+🎾 TOP ATP VALUE PICKS OF THE DAY
 
 """
 
@@ -125,6 +159,7 @@ def save_history(prediction):
 
 
         if not exists:
+
             writer.writerow(
                 [
                     "date",
@@ -173,6 +208,7 @@ def send_telegram(message):
 matches = get_atp_matches()
 
 
+
 # Jeigu nėra tinkamų ATP turnyrų
 
 if matches["status"] == "empty":
@@ -189,20 +225,25 @@ if matches["status"] == "empty":
 
 
 
-# Jeigu yra ATP mačai
+# Analizė
 
 prediction = analyze(
     matches["matches"]
 )
 
 
-save_history(prediction)
+
+save_history(
+    prediction
+)
+
 
 
 telegram_message = (
-    "🎾 ATP DAILY PICKS\n\n"
+    "🎾 ATP DAILY VALUE PICKS\n\n"
     + prediction
 )
+
 
 
 send_telegram(
@@ -210,6 +251,7 @@ send_telegram(
 )
 
 
+
 print(
-    "ATP prognozė išsiųsta"
+    "ATP value prognozė išsiųsta"
 )
