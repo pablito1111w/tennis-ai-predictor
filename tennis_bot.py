@@ -1,5 +1,6 @@
 import os
 import requests
+import json
 
 from tennis_data import get_atp_matches
 
@@ -7,60 +8,88 @@ from tennis_data import get_atp_matches
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY")
 
 
+
 def get_events():
 
     url = "https://api.odds-api.io/v3/events"
 
+
     params = {
+
         "apiKey": ODDS_API_KEY,
+
         "sport": "tennis",
+
         "status": "pending"
+
     }
+
 
     try:
 
         r = requests.get(
+
             url,
+
             params=params,
+
             timeout=20
+
         )
+
 
         r.raise_for_status()
 
+
         data = r.json()
 
+
         if isinstance(data, list):
+
             return data
+
 
         return []
 
 
+
     except Exception as e:
+
 
         print(
             "EVENTS ERROR:",
             e
         )
 
+
         return []
 
 
 
 
 
-def normalize(name):
 
-    if not name:
+def normalize(value):
+
+
+    if not value:
+
         return ""
 
+
     return (
-        str(name)
+
+        str(value)
         .lower()
         .replace(" ", "")
         .replace(".", "")
         .replace("-", "")
         .replace(",", "")
+        .replace("'", "")
+
     )
+
+
 
 
 
@@ -68,9 +97,20 @@ def normalize(name):
 
 def extract_odds(event):
 
+
     odds = {}
 
 
+
+    # tiesioginis odds
+
+    if isinstance(event.get("odds"), dict):
+
+        return event["odds"]
+
+
+
+    # markets struktūra
 
     markets = event.get(
         "markets",
@@ -78,16 +118,14 @@ def extract_odds(event):
     )
 
 
+
     for market in markets:
 
 
-        outcomes = market.get(
+        for outcome in market.get(
             "outcomes",
             []
-        )
-
-
-        for outcome in outcomes:
+        ):
 
 
             name = outcome.get(
@@ -113,12 +151,14 @@ def extract_odds(event):
 
 
 
+
 def find_odds(match, events):
 
 
     p1 = normalize(
         match["player1"]["name"]
     )
+
 
     p2 = normalize(
         match["player2"]["name"]
@@ -129,31 +169,21 @@ def find_odds(match, events):
     for event in events:
 
 
-        home = normalize(
-            event.get("home")
-        )
-
-
-        away = normalize(
-            event.get("away")
+        text = normalize(
+            json.dumps(event)
         )
 
 
 
-        if (
-
-            (p1 in home and p2 in away)
-
-            or
-
-            (p2 in home and p1 in away)
-
-        ):
+        if p1 in text and p2 in text:
 
 
-            return extract_odds(
+            odds = extract_odds(
                 event
             )
+
+
+            return odds
 
 
 
@@ -179,6 +209,7 @@ def generate_report(matches):
     )
 
 
+
     total = 0
 
 
@@ -199,6 +230,7 @@ def generate_report(matches):
 
 
         print()
+
 
         print(
             "TOURNAMENT:",
@@ -228,14 +260,12 @@ def generate_report(matches):
 
 
 
-
     print()
 
     print(
         "TOTAL WITH ODDS:",
         total
     )
-
 
 
 
@@ -255,10 +285,25 @@ def main():
     events = get_events()
 
 
+
     print(
         "Gauta įvykių:",
         len(events)
     )
+
+
+
+    if events:
+
+
+        print(
+            "\nDEBUG FIRST EVENT KEYS:"
+        )
+
+
+        print(
+            events[0].keys()
+        )
 
 
 
@@ -267,13 +312,18 @@ def main():
     )
 
 
+
     if matches["status"] == "empty":
+
 
         print(
             "Nėra ATP mačų"
         )
 
+
         return
+
+
 
 
 
@@ -285,10 +335,15 @@ def main():
     for match in matches["matches"]:
 
 
+
         odds = find_odds(
+
             match,
+
             events
+
         )
+
 
 
         match["odds"] = odds
@@ -302,9 +357,14 @@ def main():
 
 
 
+
+
     print(
+
         "Rasta koeficientų:",
+
         found
+
     )
 
 
