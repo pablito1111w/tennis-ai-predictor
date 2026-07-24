@@ -16,35 +16,57 @@ HEADERS = {
 
 
 
+
 def api_get(url, params):
 
-    try:
+    for attempt in range(3):
 
-        r = requests.get(
-            url,
-            params=params,
-            headers=HEADERS,
-            timeout=20
-        )
+        try:
 
-        print("\nREQUEST:")
-        print(r.url)
+            r = requests.get(
+                url,
+                params=params,
+                headers=HEADERS,
+                timeout=20
+            )
 
-        print("\nSTATUS:")
-        print(r.status_code)
 
-        print("\nRESPONSE:")
-        print(r.text[:3000])
+            if r.status_code == 429:
 
-        r.raise_for_status()
+                print("API LIMIT - laukiam...")
+                time.sleep(15)
+                continue
 
-        return r.json()
 
-    except Exception as e:
 
-        print("API ERROR:", e)
+            if r.status_code != 200:
 
-        return None
+                print(
+                    "API ERROR:",
+                    r.status_code,
+                    r.text[:300]
+                )
+
+                return None
+
+
+
+            return r.json()
+
+
+
+        except Exception as e:
+
+            print(
+                "REQUEST ERROR:",
+                e
+            )
+
+            time.sleep(5)
+
+
+
+    return None
 
 
 
@@ -52,7 +74,6 @@ def api_get(url, params):
 
 
 def get_events():
-
 
     data = api_get(
 
@@ -80,8 +101,7 @@ def get_events():
 
 
 
-
-def get_all_odds():
+def get_event_odds(event_id):
 
 
     data = api_get(
@@ -89,27 +109,85 @@ def get_all_odds():
         f"{BASE_URL}/odds",
 
         {
-            "apiKey": ODDS_API_KEY
+            "apiKey": ODDS_API_KEY,
+            "eventId": event_id
         }
 
     )
 
 
-    if isinstance(data,list):
-
-        return data
+    odds = {}
 
 
 
     if isinstance(data,dict):
 
-        return data.get(
-            "events",
+
+        markets = data.get(
+            "markets",
             []
         )
 
 
-    return []
+        for market in markets:
+
+
+            for outcome in market.get(
+                "outcomes",
+                []
+            ):
+
+
+                name = outcome.get(
+                    "name"
+                )
+
+
+                price = outcome.get(
+                    "price"
+                )
+
+
+                if name and price:
+
+                    odds[name] = price
+
+
+
+    elif isinstance(data,list):
+
+
+        for market in data:
+
+
+            if not isinstance(market,dict):
+
+                continue
+
+
+            for outcome in market.get(
+                "outcomes",
+                []
+            ):
+
+
+                name = outcome.get(
+                    "name"
+                )
+
+
+                price = outcome.get(
+                    "price"
+                )
+
+
+                if name and price:
+
+                    odds[name] = price
+
+
+
+    return odds
 
 
 
@@ -117,18 +195,16 @@ def get_all_odds():
 
 
 
+def normalize(name):
 
-def normalize(x):
-
-
-    if not x:
+    if not name:
 
         return ""
 
 
     return (
 
-        str(x)
+        str(name)
         .lower()
         .replace(" ","")
         .replace(".","")
@@ -144,60 +220,7 @@ def normalize(x):
 
 
 
-def extract_odds(item):
-
-
-    result = {}
-
-
-
-    if not isinstance(item,dict):
-
-        return result
-
-
-
-    markets = item.get(
-        "markets",
-        []
-    )
-
-
-
-    for market in markets:
-
-
-        for outcome in market.get(
-            "outcomes",
-            []
-        ):
-
-
-            name = outcome.get(
-                "name"
-            )
-
-
-            price = outcome.get(
-                "price"
-            )
-
-
-            if name and price:
-
-                result[name]=price
-
-
-
-    return result
-
-
-
-
-
-
-
-def match_odds(match, odds):
+def find_event(match, events):
 
 
     p1 = normalize(
@@ -211,26 +234,39 @@ def match_odds(match, odds):
 
 
 
-    for item in odds:
+    for event in events:
 
 
-        text = normalize(
-            str(item)
+        home = normalize(
+            event.get("home")
+        )
+
+
+        away = normalize(
+            event.get("away")
         )
 
 
 
-        if p1 in text and p2 in text:
+        if (
+
+            p1 in home
+            and
+            p2 in away
+
+        ) or (
+
+            p2 in home
+            and
+            p1 in away
+
+        ):
+
+            return event
 
 
-            return extract_odds(
-                item
-            )
 
-
-    return {}
-
-
+    return None
 
 
 
@@ -252,15 +288,14 @@ def report(matches):
     )
 
 
-
-    total=0
-
+    total = 0
 
 
-    for m in matches["matches"]:
+
+    for match in matches["matches"]:
 
 
-        odds=m.get(
+        odds = match.get(
             "odds",
             {}
         )
@@ -276,14 +311,14 @@ def report(matches):
 
         print(
             "TOURNAMENT:",
-            m["tournament"]
+            match["tournament"]
         )
 
 
         print(
-            m["player1"]["name"],
+            match["player1"]["name"],
             "vs",
-            m["player2"]["name"]
+            match["player2"]["name"]
         )
 
 
@@ -298,8 +333,7 @@ def report(matches):
         )
 
 
-        total+=1
-
+        total += 1
 
 
 
@@ -317,7 +351,6 @@ def report(matches):
 
 
 
-
 def main():
 
 
@@ -327,7 +360,7 @@ def main():
 
 
 
-    events=get_events()
+    events = get_events()
 
 
 
@@ -340,6 +373,7 @@ def main():
 
     if not events:
 
+
         print(
             "API neduoda events"
         )
@@ -349,47 +383,67 @@ def main():
 
 
 
-
-    matches=get_atp_matches(
+    matches = get_atp_matches(
         events
     )
 
 
 
-    odds=get_all_odds()
+    found = 0
 
 
 
-    print(
-        "Gauta odds:",
-        len(odds)
-    )
-
-
-
-    found=0
+    checked = 0
 
 
 
     for match in matches["matches"]:
 
 
-        value=match_odds(
+        event = find_event(
             match,
-            odds
+            events
         )
 
 
-        match["odds"]=value
+        if not event:
+
+            match["odds"] = {}
+
+            continue
 
 
 
-        if value:
-
-            found+=1
+        checked += 1
 
 
 
+        odds = get_event_odds(
+            event.get("id")
+        )
+
+
+        match["odds"] = odds
+
+
+
+        if odds:
+
+            found += 1
+
+
+
+        # apsauga nuo limito
+        time.sleep(1)
+
+
+
+
+
+    print(
+        "Patikrinta event:",
+        checked
+    )
 
 
     print(
@@ -409,6 +463,6 @@ def main():
 
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
 
     main()
