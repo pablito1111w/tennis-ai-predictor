@@ -18,46 +18,33 @@ HEADERS = {
 
 def api_get(url, params):
 
-    for attempt in range(3):
+    try:
 
-        try:
+        r = requests.get(
+            url,
+            params=params,
+            headers=HEADERS,
+            timeout=20
+        )
 
-            r = requests.get(
-                url,
-                params=params,
-                headers=HEADERS,
-                timeout=20
-            )
+        print("\nREQUEST:")
+        print(r.url)
 
+        print("\nSTATUS:")
+        print(r.status_code)
 
-            if r.status_code == 429:
+        print("\nRESPONSE:")
+        print(r.text[:3000])
 
-                print("API LIMIT - waiting...")
+        r.raise_for_status()
 
-                time.sleep(10)
+        return r.json()
 
-                continue
+    except Exception as e:
 
+        print("API ERROR:", e)
 
-
-            r.raise_for_status()
-
-            return r.json()
-
-
-
-        except Exception as e:
-
-            print(
-                "API ERROR:",
-                e
-            )
-
-            time.sleep(5)
-
-
-
-    return None
+        return None
 
 
 
