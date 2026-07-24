@@ -88,12 +88,13 @@ def get_events():
     )
 
 
-    if isinstance(data,list):
+    if isinstance(data, list):
 
         return data
 
 
     return []
+
 
 
 
@@ -110,7 +111,8 @@ def get_event_odds(event_id):
 
         {
             "apiKey": ODDS_API_KEY,
-            "eventId": event_id
+            "eventId": event_id,
+            "bookmakers": "bet365"
         }
 
     )
@@ -120,7 +122,7 @@ def get_event_odds(event_id):
 
 
 
-    if isinstance(data,dict):
+    if isinstance(data, dict):
 
 
         markets = data.get(
@@ -154,36 +156,47 @@ def get_event_odds(event_id):
 
 
 
-    elif isinstance(data,list):
+    elif isinstance(data, list):
 
 
-        for market in data:
+        for item in data:
 
 
-            if not isinstance(market,dict):
+            if not isinstance(item, dict):
 
                 continue
 
 
-            for outcome in market.get(
-                "outcomes",
+
+            markets = item.get(
+                "markets",
                 []
-            ):
+            )
 
 
-                name = outcome.get(
-                    "name"
-                )
+
+            for market in markets:
 
 
-                price = outcome.get(
-                    "price"
-                )
+                for outcome in market.get(
+                    "outcomes",
+                    []
+                ):
 
 
-                if name and price:
+                    name = outcome.get(
+                        "name"
+                    )
 
-                    odds[name] = price
+
+                    price = outcome.get(
+                        "price"
+                    )
+
+
+                    if name and price:
+
+                        odds[name] = price
 
 
 
@@ -373,7 +386,6 @@ def main():
 
     if not events:
 
-
         print(
             "API neduoda events"
         )
@@ -391,8 +403,6 @@ def main():
 
     found = 0
 
-
-
     checked = 0
 
 
@@ -404,6 +414,7 @@ def main():
             match,
             events
         )
+
 
 
         if not event:
@@ -423,6 +434,7 @@ def main():
         )
 
 
+
         match["odds"] = odds
 
 
@@ -433,7 +445,6 @@ def main():
 
 
 
-        # apsauga nuo limito
         time.sleep(1)
 
 
